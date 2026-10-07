@@ -82,17 +82,6 @@ export default function DashLayout({ kind }) {
                 </Button>
               )}
               <ThemeToggle />
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setAskLogout(true)}
-                className="text-ink-2"
-                title="Log out"
-                aria-label="Log out"
-              >
-                <span className="hidden sm:inline">Log out</span>
-                <LogOut className="h-4 w-4 sm:hidden" />
-              </Button>
             </div>
           </div>
         ) : (
@@ -188,13 +177,11 @@ export default function DashLayout({ kind }) {
         open={askLogout}
         onClose={() => setAskLogout(false)}
         onConfirm={out}
-        title={isVendor ? 'Log out of your kitchen?' : 'Log out of STEW?'}
+        title="Log out of STEW?"
         confirmLabel="Yes, log out"
       >
         <p className="text-sm text-ink-2">
-          {isVendor
-            ? 'You will stop receiving new orders on this device until you log back in.'
-            : 'You will need your email and password to get back in.'}
+          You will need your email and password to get back in.
         </p>
       </ConfirmDialog>
     </div>

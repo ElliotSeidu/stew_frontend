@@ -1,13 +1,12 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { ChevronDown, CupSoda, Flame, MapPin, Search, SlidersHorizontal, Soup, Utensils, Wheat } from 'lucide-react'
+import { CupSoda, Flame, Search, SlidersHorizontal, Soup, Utensils, Wheat } from 'lucide-react'
 import { Button, EmptyState, ErrorState } from '../../components/ui'
 import { MealCard, MealCardSkeleton, VendorCard, VendorCardSkeleton, useTray } from '../../components/cards'
-import { CAMPUS, ZONES, zoneName } from '../../config'
-import { useAuth, useToast } from '../../context/Providers'
+import { CAMPUS, zoneName } from '../../config'
+import { useAuth } from '../../context/Providers'
 import { api } from '../../lib/api'
 import { useAsync } from '../../lib/hooks'
-import { track } from '../../lib/analytics'
 import { KINDS } from '../../lib/mockData'
 
 const CATEGORY_MAP = [
@@ -20,34 +19,17 @@ const CATEGORY_MAP = [
 ]
 
 export default function Home() {
-  const { user, saveProfile } = useAuth()
+  const { user } = useAuth()
   const nav = useNavigate()
-  const toast = useToast()
   const { add, openDetail, modal } = useTray()
   const meals = useAsync(() => api.meals(), [])
   const vendors = useAsync(() => api.vendors(), [])
   const [kind, setKind] = useState('')
   const [q, setQ] = useState('')
   const [showFilters, setShowFilters] = useState(false)
-  const [busyZone, setBusyZone] = useState(false)
 
   const currentZone = user?.area || user?.hall || ''
   const zone = zoneName(currentZone)
-  const initials = (user?.fullName || 'U').split(' ').map((s) => s[0]).slice(0, 2).join('').toUpperCase()
-
-  const changeZone = async (name) => {
-    if (!name || name === currentZone) return
-    setBusyZone(true)
-    try {
-      await saveProfile({ area: name })
-      track('zone_selected')
-      toast(`Showing food near ${name}`)
-    } catch (e) {
-      toast(e.message, 'bad')
-    } finally {
-      setBusyZone(false)
-    }
-  }
 
   // Filter and prioritize nearby dishes
   const list = (meals.data || [])
@@ -55,48 +37,7 @@ export default function Home() {
     .sort((a, b) => (b.hall === zone ? 1 : 0) - (a.hall === zone ? 1 : 0))
 
   return (
-    <div className="space-y-8 md:space-y-10">
-      {/* Top Header Row matching Screen 2 in insp.webp */}
-      <div className="flex items-center justify-between gap-3 pt-1">
-        {/* User avatar on left */}
-        <Link
-          to="/app/account"
-          aria-label="Your account"
-          className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-brand text-on-brand font-extrabold text-sm shadow-xs transition hover:scale-105 active:scale-95"
-        >
-          {initials}
-        </Link>
-
-        {/* Location selector in center */}
-        <div className="relative inline-flex items-center gap-1.5 rounded-full border border-line/70 bg-surface/90 px-3.5 py-1.5 shadow-xs">
-          <MapPin className="h-3.5 w-3.5 text-brand-strong shrink-0" />
-          <select
-            value={currentZone}
-            onChange={(e) => changeZone(e.target.value)}
-            disabled={busyZone}
-            aria-label="Delivery location"
-            className="cursor-pointer appearance-none bg-transparent pr-5 text-xs font-extrabold text-ink focus:outline-none"
-          >
-            <option value="">Choose Hall / Area…</option>
-            {ZONES.map((z) => (
-              <option key={z.id} value={z.name}>
-                {z.name}
-              </option>
-            ))}
-          </select>
-          <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-ink-3" />
-        </div>
-
-        {/* Right side search action */}
-        <Link
-          to="/app/discover"
-          className="grid h-11 w-11 shrink-0 place-items-center rounded-full border border-line/70 bg-surface text-ink shadow-xs transition hover:bg-sunken active:scale-95"
-          aria-label="Explore all food"
-        >
-          <Search className="h-4 w-4 text-ink-2" />
-        </Link>
-      </div>
-
+    <div className="space-y-6 md:space-y-8">
       {/* Hero Title Section matching Screen 2 in insp.webp */}
       <div className="space-y-2">
         <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight text-ink leading-[1.1]">

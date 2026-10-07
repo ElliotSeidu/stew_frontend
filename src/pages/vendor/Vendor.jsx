@@ -14,6 +14,7 @@ import {
     ShoppingBasket,
     Wallet,
     Trash2,
+    LogOut,
 } from "lucide-react";
 import {
     Badge,
@@ -1134,12 +1135,19 @@ export function VSettings() {
     const auth = useAuth();
     const nav = useNavigate();
     const [askDelete, setAskDelete] = useState(false);
+    const [askLogout, setAskLogout] = useState(false);
     const {
         register,
         handleSubmit,
         formState: { errors, isSubmitting },
     } = useForm({ defaultValues: { payout: auth.user?.payout || "" } });
     const [notify, setNotify] = useState(true);
+
+    const handleLogout = () => {
+        setAskLogout(false);
+        auth.logout();
+        nav("/app/login");
+    };
 
     const handleDelete = async () => {
         setAskDelete(false);
@@ -1192,6 +1200,18 @@ export function VSettings() {
                 <Button type="submit" loading={isSubmitting}>Save changes</Button>
             </form>
 
+            <div className="pt-2">
+                <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full flex items-center justify-center gap-2"
+                    onClick={() => setAskLogout(true)}
+                >
+                    <LogOut className="h-4 w-4" />
+                    <span>Log out of kitchen</span>
+                </Button>
+            </div>
+
             <Card className="border-bad/30 bg-bad-soft/20 p-4 space-y-2">
                 <p className="text-xs font-bold uppercase tracking-wider text-bad">Danger zone</p>
                 <p className="text-xs text-ink-2">Permanently close your kitchen and delete your vendor account and menu listings.</p>
@@ -1199,6 +1219,18 @@ export function VSettings() {
                     <Trash2 className="h-4 w-4" />Delete kitchen account
                 </Button>
             </Card>
+
+            <ConfirmDialog
+                open={askLogout}
+                onClose={() => setAskLogout(false)}
+                onConfirm={handleLogout}
+                title="Log out of your kitchen?"
+                confirmLabel="Yes, log out"
+            >
+                <p className="text-sm text-ink-2">
+                    You will stop receiving new orders on this device until you log back in.
+                </p>
+            </ConfirmDialog>
 
             <ConfirmDialog
                 open={askDelete}
