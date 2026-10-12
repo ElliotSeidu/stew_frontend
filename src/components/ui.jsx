@@ -190,24 +190,27 @@ export const Input = forwardRef(
 export const PasswordInput = Input;
 
 export const Select = forwardRef(
-    ({ invalid, className = "", children, ...p }, ref) => (
-        <div className="relative w-full">
-            <select
-                ref={ref}
-                aria-invalid={!!invalid}
-                className={cx(
-                    base,
-                    st(invalid),
-                    "h-11 pr-10 appearance-none cursor-pointer bg-surface text-ink",
-                    className
-                )}
-                {...p}
-            >
-                {children}
-            </select>
-            <ChevronDown className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-ink-3" />
-        </div>
-    )
+    ({ invalid, className = "", children, wrapperClassName = "", ...p }, ref) => {
+        const isAuto = className.includes("w-auto") || className.includes("!w-auto");
+        return (
+            <div className={cx("relative", isAuto ? "inline-block w-auto" : "w-full", wrapperClassName)}>
+                <select
+                    ref={ref}
+                    aria-invalid={!!invalid}
+                    className={cx(
+                        base,
+                        st(invalid),
+                        "h-11 pr-10 appearance-none cursor-pointer bg-surface text-ink font-semibold dark:bg-[#141518] dark:text-white",
+                        className
+                    )}
+                    {...p}
+                >
+                    {children}
+                </select>
+                <ChevronDown className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-ink-3" />
+            </div>
+        );
+    }
 );
 
 export const Textarea = forwardRef(({ invalid, className = "", ...p }, ref) => (
@@ -491,19 +494,24 @@ export function Modal({ open, onClose, title, children, footer }) {
         const prev = document.activeElement;
         const onKey = (e) => e.key === "Escape" && onClose();
         document.addEventListener("keydown", onKey);
+        const prevBody = document.body.style.overflow;
+        const prevHtml = document.documentElement.style.overflow;
         document.body.style.overflow = "hidden";
+        document.documentElement.style.overflow = "hidden";
         ref.current?.focus();
         return () => {
             document.removeEventListener("keydown", onKey);
-            document.body.style.overflow = "";
+            document.body.style.overflow = prevBody;
+            document.documentElement.style.overflow = prevHtml;
             prev?.focus?.();
         };
     }, [open, onClose]);
     if (!open) return null;
     return (
         <div
-            className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-xs sm:items-center sm:p-4"
+            className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-xs overscroll-contain sm:items-center sm:p-4"
             onMouseDown={(e) => e.target === e.currentTarget && onClose()}
+            onTouchMove={(e) => e.target === e.currentTarget && e.preventDefault()}
         >
             <div
                 ref={ref}

@@ -32,10 +32,13 @@ export function MealDetailModal({ meal, open, onClose, onAdd }) {
 
     useEffect(() => {
         if (open) {
-            const prev = document.body.style.overflow;
+            const prevBody = document.body.style.overflow;
+            const prevHtml = document.documentElement.style.overflow;
             document.body.style.overflow = "hidden";
+            document.documentElement.style.overflow = "hidden";
             return () => {
-                document.body.style.overflow = prev;
+                document.body.style.overflow = prevBody;
+                document.documentElement.style.overflow = prevHtml;
             };
         }
     }, [open]);
@@ -64,6 +67,7 @@ export function MealDetailModal({ meal, open, onClose, onAdd }) {
         <div
             className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-xs overscroll-contain sm:items-center sm:p-4"
             onMouseDown={(e) => e.target === e.currentTarget && onClose()}
+            onTouchMove={(e) => e.target === e.currentTarget && e.preventDefault()}
         >
             <div
                 role="dialog"

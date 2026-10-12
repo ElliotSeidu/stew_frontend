@@ -242,7 +242,7 @@ export default function Discover() {
               <Select
                 value={sort}
                 onChange={(e) => setSort(e.target.value)}
-                className="!h-9 !w-auto text-xs font-bold !rounded-full px-3"
+                className="!h-9 !w-auto text-xs font-bold !rounded-full pl-3.5 pr-8"
                 aria-label="Sort dishes"
               >
                 <option value="relevance">Relevance</option>
