@@ -99,7 +99,7 @@ export default function App() {
 
                     <Route
                         element={
-                            <Protected roles={['customer']}>
+                            <Protected roles={["customer"]}>
                                 <CustomerLayout />
                             </Protected>
                         }

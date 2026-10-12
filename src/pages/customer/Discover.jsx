@@ -72,12 +72,15 @@ export default function Discover() {
     return r
   }, [meals.data, q, cat, max, hall, now, sort])
 
+  const [showFilters, setShowFilters] = useState(false)
+
   const reset = () => {
     setSp({}, { replace: true })
     setText('')
     setNow(false)
     setMax(0)
     setHall('')
+    setShowFilters(false)
   }
 
   return (
@@ -144,8 +147,8 @@ export default function Discover() {
 
       {/* Main Grid + Filter Section */}
       <div className="grid gap-6 lg:grid-cols-[260px_1fr]">
-        {/* Filters Sidebar */}
-        <aside className="space-y-4">
+        {/* Filters Sidebar — hidden on mobile unless toggled */}
+        <aside className={showFilters ? 'block' : 'hidden lg:block'}>
           <Card className="rounded-3xl border border-line/70 bg-surface p-5 shadow-xs space-y-4">
             <div className="flex items-center justify-between">
               <span className="flex items-center gap-2 text-sm font-black text-ink">
@@ -221,6 +224,20 @@ export default function Discover() {
                 : `${results.length} dish${results.length === 1 ? '' : 'es'} available`}
             </p>
             <div className="flex items-center gap-2">
+              {/* Mobile filter toggle */}
+              <button
+                type="button"
+                onClick={() => setShowFilters(!showFilters)}
+                className={`lg:hidden inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-bold transition ${
+                  showFilters || now || max || hall
+                    ? 'border-brand bg-brand text-on-brand'
+                    : 'border-line/70 bg-surface text-ink-2 hover:bg-sunken'
+                }`}
+              >
+                <SlidersHorizontal className="h-3.5 w-3.5" />
+                {showFilters ? 'Hide filters' : 'Filters'}
+                {(now || max || hall) && <span className="grid h-4 w-4 place-items-center rounded-full bg-on-brand/20 text-[10px] font-black">{[now, !!max, !!hall].filter(Boolean).length}</span>}
+              </button>
               <span className="text-xs font-bold text-ink-3 hidden sm:inline">Sort:</span>
               <Select
                 value={sort}

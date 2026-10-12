@@ -145,8 +145,8 @@ export default function Landing() {
                         <div className="mb-8 flex items-center justify-between text-xs font-bold text-ink-3 dark:text-zinc-400">
                             <div className="flex items-center gap-1.5">
                                 <span className="h-1.5 w-12 rounded-full bg-brand" />
-                                <span className="h-1.5 w-8 rounded-full bg-line dark:bg-white/20" />
-                                <span className="h-1.5 w-8 rounded-full bg-line dark:bg-white/20" />
+                                <span className="h-1.5 w-12 rounded-full bg-brand" />
+                                <span className="h-1.5 w-12 rounded-full bg-brand" />
                             </div>
                             <Button to="/app" variant="ghost" size="sm" className="!h-8 !px-3 text-xs text-ink-2 hover:text-ink hover:bg-sunken dark:text-zinc-300 dark:hover:text-white dark:hover:bg-white/10 !rounded-full">
                                 Skip to food
@@ -354,7 +354,7 @@ export default function Landing() {
                                             <span className="num font-black text-ink text-sm sm:text-base">
                                                 {money(m.price)}
                                             </span>
-                                            <Button to="/app" size="sm" className="!h-7 !px-3 text-xs">
+                                            <Button to="/app" variant="outline" size="sm" className="!h-7 !px-3 text-xs">
                                                 Order
                                             </Button>
                                         </div>

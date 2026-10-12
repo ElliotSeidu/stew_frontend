@@ -189,9 +189,11 @@ export function Account() {
 
       <Card className="p-2">
         <Link to="/app/support" className={row}><span className="flex items-center gap-2"><LifeBuoy className="h-4 w-4" />Help & support</span><ChevronRight className="h-4 w-4" /></Link>
-        {user?.isVendor || user?.role === 'vendor' || user?.role === 'admin' || user?.isAdmin
+        {!isAdmin && (user?.isVendor || user?.role === 'vendor')
           ? <Link to="/app/vendor" className={row}><span className="flex items-center gap-2"><Store className="h-4 w-4" />Your kitchen dashboard</span><ChevronRight className="h-4 w-4" /></Link>
-          : <Link to="/app/vendor/apply" className={row}><span className="flex items-center gap-2"><Store className="h-4 w-4" />Start selling on STEW</span><ChevronRight className="h-4 w-4" /></Link>}
+          : !isAdmin
+            ? <Link to="/app/vendor/apply" className={row}><span className="flex items-center gap-2"><Store className="h-4 w-4" />Start selling on STEW</span><ChevronRight className="h-4 w-4" /></Link>
+            : null}
         {(user?.isAdmin || user?.role === 'admin') && <Link to="/app/admin" className={row}><span className="flex items-center gap-2"><ShieldCheck className="h-4 w-4" />Admin console</span><ChevronRight className="h-4 w-4" /></Link>}
       </Card>
       <Card className="p-2">

@@ -2,98 +2,140 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 :root {
-  --canvas: #f3fafc;
-  --surface: #ffffff;
-  --sunken: #e6f4f8;
-  --line: #d3e6ec;
-  --ink: #0a1a20;
-  --ink-2: #3f555c;
-  --ink-3: #5a7078;
-  --brand: #06b6d4;
-  --brand-strong: #0e7490;
-  --brand-soft: #ddf6fb;
-  --on-brand: #022b33;
-  --ok: #15803d;
-  --ok-soft: #e3f5ea;
-  --warn: #b45309;
-  --warn-soft: #fef3c7;
-  --bad: #b91c1c;
-  --bad-soft: #fee2e2;
-  --on-solid: #ffffff;
+    --canvas: #f3fafc;
+    --surface: #ffffff;
+    --sunken: #e6f4f8;
+    --line: #d3e6ec;
+    --ink: #0a1a20;
+    --ink-2: #3f555c;
+    --ink-3: #5a7078;
+    --brand: #06b6d4;
+    --brand-strong: #0e7490;
+    --brand-soft: #ddf6fb;
+    --on-brand: #022b33;
+    --ok: #15803d;
+    --ok-soft: #e3f5ea;
+    --warn: #b45309;
+    --warn-soft: #fef3c7;
+    --bad: #b91c1c;
+    --bad-soft: #fee2e2;
+    --on-solid: #ffffff;
 }
 .dark {
-  color-scheme: dark;
-  --canvas: #000000;
-  --surface: #0b0b0c;
-  --sunken: #141516;
-  --line: #232a2d;
-  --ink: #f1fafc;
-  --ink-2: #a8bcc2;
-  --ink-3: #8ca2a9;
-  --brand: #06b6d4;
-  --brand-strong: #22d3ee;
-  --brand-soft: #052a33;
-  --on-brand: #00181d;
-  --ok: #4ade80;
-  --ok-soft: #052e16;
-  --warn: #fbbf24;
-  --warn-soft: #2b1d04;
-  --bad: #f87171;
-  --bad-soft: #2d0b0b;
-  --on-solid: #0a0a0a;
+    color-scheme: dark;
+    --canvas: #000000;
+    --surface: #0b0b0c;
+    --sunken: #141516;
+    --line: #232a2d;
+    --ink: #f1fafc;
+    --ink-2: #a8bcc2;
+    --ink-3: #8ca2a9;
+    --brand: #06b6d4;
+    --brand-strong: #22d3ee;
+    --brand-soft: #052a33;
+    --on-brand: #00181d;
+    --ok: #4ade80;
+    --ok-soft: #052e16;
+    --warn: #fbbf24;
+    --warn-soft: #2b1d04;
+    --bad: #f87171;
+    --bad-soft: #2d0b0b;
+    --on-solid: #0a0a0a;
 }
 
 @theme inline {
-  --font-sans: "Plus Jakarta Sans Variable", ui-sans-serif, system-ui, sans-serif;
-  --color-canvas: var(--canvas);
-  --color-surface: var(--surface);
-  --color-sunken: var(--sunken);
-  --color-line: var(--line);
-  --color-ink: var(--ink);
-  --color-ink-2: var(--ink-2);
-  --color-ink-3: var(--ink-3);
-  --color-brand: var(--brand);
-  --color-brand-strong: var(--brand-strong);
-  --color-brand-soft: var(--brand-soft);
-  --color-on-brand: var(--on-brand);
-  --color-ok: var(--ok);
-  --color-ok-soft: var(--ok-soft);
-  --color-warn: var(--warn);
-  --color-warn-soft: var(--warn-soft);
-  --color-bad: var(--bad);
-  --color-bad-soft: var(--bad-soft);
-  --color-on-solid: var(--on-solid);
+    --font-sans:
+        "Plus Jakarta Sans Variable", ui-sans-serif, system-ui, sans-serif;
+    --color-canvas: var(--canvas);
+    --color-surface: var(--surface);
+    --color-sunken: var(--sunken);
+    --color-line: var(--line);
+    --color-ink: var(--ink);
+    --color-ink-2: var(--ink-2);
+    --color-ink-3: var(--ink-3);
+    --color-brand: var(--brand);
+    --color-brand-strong: var(--brand-strong);
+    --color-brand-soft: var(--brand-soft);
+    --color-on-brand: var(--on-brand);
+    --color-ok: var(--ok);
+    --color-ok-soft: var(--ok-soft);
+    --color-warn: var(--warn);
+    --color-warn-soft: var(--warn-soft);
+    --color-bad: var(--bad);
+    --color-bad-soft: var(--bad-soft);
+    --color-on-solid: var(--on-solid);
 }
 
 @layer base {
-  *, ::before, ::after { border-color: var(--line); }
-  /* Short pages must not scroll past their own end into empty canvas. */
-  html { background: var(--canvas); scroll-behavior: smooth; height: 100%; overscroll-behavior-y: none; }
-  body { @apply bg-canvas font-sans text-ink antialiased; min-height: 100%; }
-  #root { min-height: 100%; }
-  :focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
-  button { cursor: pointer; }
-  summary { list-style: none; }
-  summary::-webkit-details-marker { display: none; }
-  section[id] { scroll-margin-top: 5rem; }
-  select, select option {
-    background-color: var(--surface);
-    color: var(--ink);
-  }
+    *,
+    ::before,
+    ::after {
+        border-color: var(--line);
+    }
+    /* Short pages must not scroll past their own end into empty canvas. */
+    html {
+        background: var(--canvas);
+        scroll-behavior: smooth;
+        height: 100%;
+        overscroll-behavior-y: none;
+    }
+    body {
+        @apply bg-canvas font-sans text-ink antialiased;
+        min-height: 100%;
+    }
+    #root {
+        min-height: 100%;
+    }
+    :focus-visible {
+        outline: 2px solid var(--brand);
+        outline-offset: 2px;
+    }
+    button {
+        cursor: pointer;
+    }
+    summary {
+        list-style: none;
+    }
+    summary::-webkit-details-marker {
+        display: none;
+    }
+    section[id] {
+        scroll-margin-top: 5rem;
+    }
+    select,
+    select option {
+        background-color: var(--surface);
+        color: var(--ink);
+    }
 }
 /* Hide all scroll bars across the site while maintaining full scrollability */
-html, body, *, *::before, *::after {
-  scrollbar-width: none !important;
-  -ms-overflow-style: none !important;
+html,
+body,
+*,
+*::before,
+*::after {
+    scrollbar-width: none !important;
+    -ms-overflow-style: none !important;
 }
 *::-webkit-scrollbar {
-  display: none !important;
-  width: 0 !important;
-  height: 0 !important;
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
 }
-.num { font-variant-numeric: tabular-nums; }
-.no-scrollbar::-webkit-scrollbar { display: none; }
-.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+.num {
+    font-variant-numeric: tabular-nums;
+}
+.no-scrollbar::-webkit-scrollbar {
+    display: none;
+}
+.no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
 @media (prefers-reduced-motion: reduce) {
-  * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
+    * {
+        animation-duration: 0.01ms !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
 }
