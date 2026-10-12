@@ -36,6 +36,9 @@ export default function Home() {
     .filter((m) => m.open && (!kind || m.cat === kind))
     .sort((a, b) => (b.hall === zone ? 1 : 0) - (a.hall === zone ? 1 : 0))
 
+  // Show about 4 or 5 of the popular dishes on the home page (4 gives a balanced 2x2 on mobile and 4-col on desktop)
+  const displayedList = !kind ? list.slice(0, 4) : list.slice(0, 6)
+
   return (
     <div className="space-y-6 md:space-y-8">
       {/* Hero Title Section matching Screen 2 in insp.webp */}
@@ -145,16 +148,28 @@ export default function Home() {
               <MealCardSkeleton key={i} />
             ))}
           </div>
-        ) : list.length ? (
-          <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 lg:grid-cols-4">
-            {list.map((m) => (
-              <MealCard
-                key={m.id}
-                meal={m}
-                onAdd={add}
-                onOpenDetail={openDetail}
-              />
-            ))}
+        ) : displayedList.length ? (
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 lg:grid-cols-4">
+              {displayedList.map((m) => (
+                <MealCard
+                  key={m.id}
+                  meal={m}
+                  onAdd={add}
+                  onOpenDetail={openDetail}
+                />
+              ))}
+            </div>
+            {!kind && list.length > displayedList.length && (
+              <div className="pt-1 text-center">
+                <Link
+                  to="/app/discover"
+                  className="inline-flex items-center gap-1.5 rounded-full border border-line bg-surface px-5 py-2.5 text-xs font-bold text-ink shadow-xs transition hover:bg-sunken hover:border-brand/40 active:scale-95"
+                >
+                  See all {list.length} dishes on Discover &rarr;
+                </Link>
+              </div>
+            )}
           </div>
         ) : (
           <EmptyState

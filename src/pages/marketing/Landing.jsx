@@ -335,7 +335,7 @@ export default function Landing() {
                         sub="Sample items for illustration. Real menus appear once you sign in."
                     >
                         <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 lg:grid-cols-4">
-                            {MEALS.slice(0, 8).map((m) => (
+                            {MEALS.slice(0, 4).map((m) => (
                                 <div
                                     key={m.id}
                                     className="flex flex-col rounded-[1.75rem] border border-line/70 bg-surface p-3 sm:p-3.5 shadow-xs transition hover:shadow-md"
