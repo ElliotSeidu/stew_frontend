@@ -73,8 +73,8 @@ function AuthProvider({ children }) {
     updateUser: (u) => { write('stew.me', u); setUser(u); return u },
     // A vendor account can also order food, and a customer can apply to start selling.
     // These flags are what the route guard and the Account screen read.
-    isVendor: !!user?.isVendor,
-    isAdmin: !!user?.isAdmin,
+    isVendor: !!(user?.isVendor || user?.role === 'vendor'),
+    isAdmin: !!(user?.isAdmin || user?.role === 'admin'),
     becomeVendor: () => {
       const u = { ...read('stew.me'), isVendor: true, role: 'vendor' }
       write('stew.me', u)

@@ -37,7 +37,7 @@ const LIST_HINT = 'Type your own, separated by commas. e.g. Waakye, Jollof, Meat
 export function Signup() {
   const auth = useAuth()
   const nav = useNavigate()
-  const { register, handleSubmit, watch, setError, formState: { errors, isSubmitting } } = useForm({ mode: 'onTouched', defaultValues: { accountType: 'customer' } })
+  const { register, handleSubmit, watch, getValues, setError, formState: { errors, isSubmitting } } = useForm({ mode: 'onTouched', defaultValues: { accountType: 'customer' } })
   const accountType = watch('accountType')
   const selling = accountType === 'vendor' || accountType === 'both'
   useEffect(() => { track('signup_started') }, [])
@@ -127,11 +127,11 @@ export function Signup() {
         </Field>
         <Field label="Confirm password" error={errors.confirm}>
           <Input type="password" autoComplete="new-password" invalid={errors.confirm}
-            {...register('confirm', { required: 'Confirm your password', validate: (v) => v === watch('password') || 'Passwords do not match' })} />
+            {...register('confirm', { required: 'Confirm your password', validate: (v) => v === getValues('password') || 'Passwords do not match' })} />
         </Field>
         <div>
           <label className="flex items-start gap-2 text-sm text-ink-2">
-            <input type="checkbox" className="mt-1 h-4 w-4 accent-[#06b6d4]" {...register('terms', { required: 'You must accept to continue' })} />
+            <input type="checkbox" className="mt-1 h-4 w-4 accent-brand" {...register('terms', { required: 'You must accept to continue' })} />
             <span>I agree to the <Link to="/app/legal/terms" className="font-semibold text-brand-strong underline">Terms</Link> and <Link to="/app/legal/privacy" className="font-semibold text-brand-strong underline">Privacy Policy</Link>.</span>
           </label>
           {errors.terms && <p role="alert" className="mt-1 text-xs font-medium text-bad">{errors.terms.message}</p>}
@@ -331,7 +331,7 @@ export function ResetPassword() {
   const email = sessionStorage.getItem('stew.reset')
   const nav = useNavigate()
   const toast = useToast()
-  const { register, handleSubmit, watch, setError, formState: { errors, isSubmitting } } = useForm({ mode: 'onTouched' })
+  const { register, handleSubmit, getValues, setError, formState: { errors, isSubmitting } } = useForm({ mode: 'onTouched' })
   if (!email) return <Navigate to="/app/forgot" replace />
   const onSubmit = async (d) => {
     try {
@@ -354,7 +354,7 @@ export function ResetPassword() {
           <Input type="password" autoComplete="new-password" invalid={errors.password} {...register('password', pwRules)} />
         </Field>
         <Field label="Confirm new password" error={errors.confirm}>
-          <Input type="password" autoComplete="new-password" invalid={errors.confirm} {...register('confirm', { required: 'Confirm your password', validate: (v) => v === watch('password') || 'Passwords do not match' })} />
+          <Input type="password" autoComplete="new-password" invalid={errors.confirm} {...register('confirm', { required: 'Confirm your password', validate: (v) => v === getValues('password') || 'Passwords do not match' })} />
         </Field>
         <RootError error={errors.root} />
         <Button type="submit" className="w-full" loading={isSubmitting}>Update password</Button>

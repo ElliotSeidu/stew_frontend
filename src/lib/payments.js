@@ -82,6 +82,14 @@ export async function payForOrder(order, { onStatus } = {}) {
     return { pending: true, reference }
   }
 
+  // When running in mock mode or without a live secret/access_code, simulate the payment flow
+  if (init.mock || (MOCK && !init.access_code && !init.data?.access_code)) {
+    say('awaiting-approval')
+    await new Promise((r) => setTimeout(r, 800))
+    say('verifying')
+    return api.verifyPayment({ orderId: order.id, reference })
+  }
+
   const accessCode = init.access_code || init.data?.access_code
   if (!accessCode) throw new Error('The payment could not be started. Please try again.')
 

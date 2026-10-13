@@ -559,7 +559,6 @@ export function AModeration() {
                                 <div className="flex items-center gap-1">
                                     <Stars
                                         value={r.rating}
-                                        readonly
                                         size="h-4 w-4"
                                     />
                                     <span className="text-xs font-bold">

@@ -572,7 +572,7 @@ export default function Landing() {
                         <Button
                             to="/app/signup"
                             size="lg"
-                            className="mt-6 bg-on-brand text-brand hover:brightness-110 text-white"
+                            className="mt-6 bg-on-brand text-white hover:brightness-110"
                         >
                             Create your account
                         </Button>

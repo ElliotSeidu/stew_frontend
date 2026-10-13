@@ -408,7 +408,7 @@ const mock = {
   // so the whole flow is testable without keys. Nothing here is a real charge.
   async initPayment({ orderId }) {
     await wait(500)
-    const o = read('stew.orders', []).find((x) => x.id === orderId)
+    const o = getOrders().find((x) => x.id === orderId)
     if (!o) throw new Error('Order not found')
     if ((o.payment?.status) === 'paid') throw new Error('This order is already paid')
     const reference = 'PSK-' + Math.random().toString(36).slice(2, 10).toUpperCase()
@@ -417,7 +417,7 @@ const mock = {
   },
   async verifyPayment({ orderId, reference }) {
     await wait(700)
-    const o = read('stew.orders', []).find((x) => x.id === orderId)
+    const o = getOrders().find((x) => x.id === orderId)
     if (!o) throw new Error('Order not found')
     if (o.payment?.reference !== reference) throw new Error('That payment reference does not match this order')
     const next = patch(orderId, { payment: { ...(o.payment || {}), status: 'paid', paidAt: Date.now() } })
@@ -425,14 +425,14 @@ const mock = {
   },
   async proposeMeetup(id, p) {
     await wait(400)
-    const o = read('stew.orders', []).find((x) => x.id === id)
+    const o = getOrders().find((x) => x.id === id)
     if (!o) throw new Error('Order not found')
     const next = patch(id, { meetup: { place: p.place, note: p.note || '', proposedBy: p.proposedBy, proposedAt: Date.now(), confirmedBy: [], agreed: false } })
     return full(next)
   },
   async confirmMeetup(id) {
     await wait(350)
-    const o = read('stew.orders', []).find((x) => x.id === id)
+    const o = getOrders().find((x) => x.id === id)
     if (!o) throw new Error('Order not found')
     if (!o.meetup?.place) throw new Error('Nobody has proposed a meeting point yet')
     const who = read('stew.me')?.role || 'student'
@@ -452,7 +452,7 @@ const mock = {
   // is held, which is the whole point: nobody is paid for food that was never handed over.
   async markCollected(id) {
     await wait(600)
-    const o = read('stew.orders', []).find((x) => x.id === id)
+    const o = getOrders().find((x) => x.id === id)
     if (!o) throw new Error('Order not found')
     if (o.cancelledAt) throw new Error('This order was cancelled')
     if (o.payment?.status !== 'paid') throw new Error('This order was never paid for')
@@ -475,7 +475,7 @@ const mock = {
   // The chef entering the student's handoff code is the authoritative completion event.
   async completeByCode(id, code) {
     await wait(500)
-    const o = read('stew.orders', []).find((x) => x.id === id)
+    const o = getOrders().find((x) => x.id === id)
     if (!o) throw new Error('Order not found')
     if (o.cancelledAt) throw new Error('This order was cancelled')
     if (!o.handoffCode) throw new Error('This order has no handoff code')
@@ -496,7 +496,7 @@ const mock = {
   // A chef asking us to chase a student who never confirmed.
   async nudgeCollection(id) {
     await wait(300)
-    const o = read('stew.orders', []).find((x) => x.id === id)
+    const o = getOrders().find((x) => x.id === id)
     if (!o) throw new Error('Order not found')
     const next = patch(id, { collectionNudgedAt: Date.now() })
     return full(next)
@@ -504,7 +504,7 @@ const mock = {
   // What the chef is owed: held while cooking, released once collected.
   async payouts() {
     await wait(250)
-    const mine = read('stew.orders', []).filter((o) => !o.cancelledAt)
+    const mine = getOrders().filter((o) => !o.cancelledAt)
     const paidOrders = mine.filter((o) => o.payment?.status && o.payment.status !== 'pending')
     const sum = (list) => list.reduce((s, o) => s + (Number(o.subtotal) || 0), 0)
     const released = paidOrders.filter((o) => o.settlement?.status === 'released')
@@ -523,7 +523,7 @@ const mock = {
   // ---- batch cooking: the chef's progress taps -----------------------------
   async setPrepStage(id, stage) {
     await wait(300)
-    const o = read('stew.orders', []).find((x) => x.id === id)
+    const o = getOrders().find((x) => x.id === id)
     if (!o) throw new Error('Order not found')
     if (o.cancelledAt) throw new Error('This order was cancelled')
     const next = patch(id, { prepStage: stage, prepAt: { ...(o.prepAt || {}), [stage]: Date.now() } })
@@ -533,7 +533,7 @@ const mock = {
   // ---- messages between the student and the chef ---------------------------
   async sendMessage(id, { text, from }) {
     await wait(250)
-    const o = read('stew.orders', []).find((x) => x.id === id)
+    const o = getOrders().find((x) => x.id === id)
     if (!o) throw new Error('Order not found')
     const clean = String(text || '').trim().slice(0, 500)
     if (!clean) throw new Error('Type a message first')
@@ -643,7 +643,7 @@ const mock = {
   async payoutBatches() { await wait(150); return read('stew.payoutBatches', []) },
   async createPayoutBatch() {
     await wait(700)
-    const orders = read('stew.orders', [])
+    const orders = getOrders()
     const releasable = orders.filter((o) => o.settlement?.status === 'released' && !o.payoutBatchId && !o.cancelledAt)
     if (!releasable.length) throw new Error('Nothing to settle yet — no released orders waiting')
     const amount = releasable.reduce((s, o) => s + (Number(o.subtotal) || 0), 0)

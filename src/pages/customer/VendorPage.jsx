@@ -177,7 +177,7 @@ export default function VendorPage() {
               <li key={i} className="rounded-3xl border border-line/70 bg-surface p-5 space-y-2 shadow-xs">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-1.5">
-                    <Stars value={r.rating} readonly size="h-4 w-4" />
+                    <Stars value={r.rating} size="h-4 w-4" />
                     <span className="text-xs font-bold">{r.rating}.0</span>
                   </div>
                   <span className="text-[11px] font-semibold text-ink-3">{timeAgo(r.createdAt)}</span>

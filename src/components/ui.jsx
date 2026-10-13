@@ -510,6 +510,7 @@ export function Modal({ open, onClose, title, children, footer }) {
     return (
         <div
             className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-xs overscroll-contain sm:items-center sm:p-4"
+            style={{ touchAction: "none" }}
             onMouseDown={(e) => e.target === e.currentTarget && onClose()}
             onTouchMove={(e) => e.target === e.currentTarget && e.preventDefault()}
         >
@@ -519,6 +520,7 @@ export function Modal({ open, onClose, title, children, footer }) {
                 role="dialog"
                 aria-modal="true"
                 aria-label={title}
+                style={{ touchAction: "pan-y" }}
                 className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-t-2xl border border-line bg-surface p-5 shadow-2xl outline-none sm:rounded-3xl"
             >
                 <div className="mb-3 flex items-start justify-between gap-3">

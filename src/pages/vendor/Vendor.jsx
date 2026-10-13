@@ -985,7 +985,7 @@ export function VEarnings() {
             <p className="text-xs text-ink-3">Sales figures below are sample data.</p>
             <div className="grid gap-3 sm:grid-cols-3">
                 <Card><p className="text-xs text-ink-3">This week</p><p className="num text-2xl font-extrabold">{money(total)}</p></Card>
-                <Card><p className="text-xs text-ink-3">Best day</p><p className="text-2xl font-extrabold">{SALES.find((s) => s.v === max).d}</p></Card>
+                <Card><p className="text-xs text-ink-3">Best day</p><p className="text-2xl font-extrabold">{SALES.find((s) => s.v === max)?.d || "—"}</p></Card>
                 <Card><p className="text-xs text-ink-3">Next payout</p><p className="text-2xl font-extrabold">{held > 0 ? money(held) : "—"}</p></Card>
             </div>
             <Card>

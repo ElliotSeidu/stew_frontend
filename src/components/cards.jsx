@@ -31,17 +31,19 @@ export function MealDetailModal({ meal, open, onClose, onAdd }) {
     const toast = useToast();
 
     useEffect(() => {
-        if (open) {
-            const prevBody = document.body.style.overflow;
-            const prevHtml = document.documentElement.style.overflow;
-            document.body.style.overflow = "hidden";
-            document.documentElement.style.overflow = "hidden";
-            return () => {
-                document.body.style.overflow = prevBody;
-                document.documentElement.style.overflow = prevHtml;
-            };
-        }
-    }, [open]);
+        if (!open) return;
+        const onKey = (e) => e.key === "Escape" && onClose();
+        document.addEventListener("keydown", onKey);
+        const prevBody = document.body.style.overflow;
+        const prevHtml = document.documentElement.style.overflow;
+        document.body.style.overflow = "hidden";
+        document.documentElement.style.overflow = "hidden";
+        return () => {
+            document.removeEventListener("keydown", onKey);
+            document.body.style.overflow = prevBody;
+            document.documentElement.style.overflow = prevHtml;
+        };
+    }, [open, onClose]);
 
     if (!meal || !open) return null;
     const key = "m:" + meal.id;
@@ -66,6 +68,7 @@ export function MealDetailModal({ meal, open, onClose, onAdd }) {
     return (
         <div
             className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-xs overscroll-contain sm:items-center sm:p-4"
+            style={{ touchAction: "none" }}
             onMouseDown={(e) => e.target === e.currentTarget && onClose()}
             onTouchMove={(e) => e.target === e.currentTarget && e.preventDefault()}
         >
@@ -73,6 +76,7 @@ export function MealDetailModal({ meal, open, onClose, onAdd }) {
                 role="dialog"
                 aria-modal="true"
                 aria-label={meal.name}
+                style={{ touchAction: "pan-y" }}
                 className="flex max-h-[92vh] w-full max-w-lg flex-col overflow-hidden rounded-t-[2.5rem] border border-line/80 bg-surface shadow-2xl overscroll-contain sm:rounded-[2.5rem]"
             >
                 {/* Top bar matching Screen 3 in insp.webp */}
@@ -475,9 +479,12 @@ export function useTray() {
     const [detailMeal, setDetailMeal] = useState(null);
 
     const add = (meal, qty = 1, note = "") => {
-        if (cart.add(meal, qty, note) === "conflict")
+        const res = cart.add(meal, qty, note);
+        if (res === "conflict") {
             setPending({ meal, qty, note });
-        else {
+        } else if (res === "sold_out") {
+            toast(`${meal.name} is sold out`, "bad");
+        } else {
             toast(`${meal.name} added to tray`);
             track("add_to_tray");
         }
