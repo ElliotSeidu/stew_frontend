@@ -14,6 +14,7 @@ import AuthLayout from "./layouts/AuthLayout";
 import CustomerLayout from "./layouts/CustomerLayout";
 import DashLayout from "./layouts/DashLayout";
 import { Protected } from "./components/guards";
+import { useAuth } from "./context/Providers";
 import Home from "./pages/customer/Home";
 import Discover from "./pages/customer/Discover";
 import VendorPage from "./pages/customer/VendorPage";
@@ -44,10 +45,20 @@ import NotFound from "./pages/NotFound";
 import { track } from "./lib/analytics";
 
 function Root() {
+    const { user } = useAuth();
     const standalone =
         window.matchMedia("(display-mode: standalone)").matches ||
-        window.navigator.standalone;
-    return standalone ? <Navigate to="/app" replace /> : <Landing />;
+        window.navigator.standalone === true;
+
+    if (standalone) {
+        if (!user) return <Navigate to="/app/login" replace />;
+        if (user.isAdmin || user.role === "admin") return <Navigate to="/app/admin" replace />;
+        if (user.accountType === "vendor" || user.isVendor || user.role === "vendor") {
+            return <Navigate to="/app/vendor" replace />;
+        }
+        return <Navigate to="/app" replace />;
+    }
+    return <Landing />;
 }
 
 function VendorApplyLayout() {
@@ -85,6 +96,7 @@ export default function App() {
             <RouteTracker />
             <Routes>
                 <Route path="/" element={<Root />} />
+                <Route path="/landing" element={<Landing />} />
                 <Route path="/legal/:slug?" element={<Legal />} />
 
                 <Route path="/app">

@@ -23,7 +23,7 @@ export default defineConfig({
         background_color: '#000000',
         display: 'standalone',
         orientation: 'portrait',
-        start_url: '/',
+        start_url: '/app/login',
         scope: '/',
         icons: [
           { src: 'pwa-64x64.png', sizes: '64x64', type: 'image/png' },
