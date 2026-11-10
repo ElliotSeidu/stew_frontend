@@ -9,23 +9,40 @@ import {
     Stars,
 } from "../../components/ui";
 import { useToast } from "../../context/Providers";
-import { api, auditLog } from "../../lib/api";
+import { api } from "../../lib/api";
 import { useAsync } from "../../lib/hooks";
-import {
-    DISPUTES,
-    PENDING_VENDORS,
-    USERS,
-    VENDORS,
-    PREP_STAGES,
-    stageIndex,
-} from "../../lib/mockData";
+import { PREP_STAGES, stageIndex } from "../../lib/mockData";
 import { money, timeAgo } from "../../lib/utils";
 import { niceDay } from "../../config";
 import { MessageSquare, ReceiptText, ThumbsUp, Wallet } from "lucide-react";
 
 export function AOverview() {
     const ledger = useAsync(() => api.payouts(), []);
+    const orders = useAsync(() => api.orders(), []);
+    const vendors = useAsync(() => api.adminVendors(), []);
+    const cases = useAsync(() => api.cases(), []);
+
     const held = ledger.data?.held ?? 0;
+    const [todayStart] = useState(() => {
+        const d = new Date();
+        d.setHours(0, 0, 0, 0);
+        return d.getTime();
+    });
+    const ordersToday = useMemo(
+        () => (orders.data || []).filter((o) => (o.createdAt || 0) >= todayStart).length,
+        [orders.data, todayStart]
+    );
+    const activeVendorsCount = useMemo(
+        () => (vendors.data || []).filter((v) => v.active !== false).length,
+        [vendors.data]
+    );
+    const pendingVendorsCount = useMemo(
+        () => (vendors.data || []).filter((v) => v.active === false).length,
+        [vendors.data]
+    );
+    const openDisputes = cases.data || [];
+    const highPriorityCount = openDisputes.filter((d) => d.priority === "high").length;
+
     return (
         <div className="space-y-6">
             <h1 className="text-2xl font-extrabold">Overview</h1>
@@ -35,10 +52,10 @@ export function AOverview() {
             </p>
             <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
                 {[
-                    ["Orders today", 148],
-                    ["Active vendors", VENDORS.length],
-                    ["Open disputes", DISPUTES.length],
-                    ["Pending applications", PENDING_VENDORS.length],
+                    ["Orders today", ordersToday],
+                    ["Active vendors", activeVendorsCount],
+                    ["Open disputes", openDisputes.length],
+                    ["Suspended / pending kitchens", pendingVendorsCount],
                 ].map(([l, v]) => (
                     <Card key={l}>
                         <p className="text-xs text-ink-3">{l}</p>
@@ -47,7 +64,6 @@ export function AOverview() {
                 ))}
             </div>
 
-            {/* Money we are holding on behalf of students and chefs. */}
             {ledger.loading && !ledger.data ? (
                 <Card className="border-brand/40 bg-brand-soft space-y-2">
                     <div className="h-4 w-28 animate-pulse rounded bg-brand/20" />
@@ -72,38 +88,38 @@ export function AOverview() {
                 </Card>
             )}
 
-            <Card className="border-bad/40 bg-bad-soft">
-                <p className="font-bold text-bad">
-                    Priority:{" "}
-                    {DISPUTES.filter((d) => d.priority === "high").length} food
-                    safety case needs review
-                </p>
-            </Card>
+            {highPriorityCount > 0 && (
+                <Card className="border-bad/40 bg-bad-soft">
+                    <p className="font-bold text-bad">
+                        Priority: {highPriorityCount} food safety case
+                        {highPriorityCount === 1 ? "" : "s"} need review
+                    </p>
+                </Card>
+            )}
         </div>
     );
 }
 
 export function AVendors() {
     const toast = useToast();
-    const [tab, setTab] = useState("pending");
-    const [pending, setPending] = useState(PENDING_VENDORS);
-    const [activeList, setActiveList] = useState(
-        VENDORS.map((v) => ({ ...v, active: v.open }))
-    );
+    const [tab, setTab] = useState("active");
+    const vendors = useAsync(() => api.adminVendors(), []);
 
-    const act = (id, msg) => {
-        setPending((l) => l.filter((x) => x.id !== id));
-        toast(msg);
-    };
+    const allVendors = vendors.data || [];
+    const pending = allVendors.filter((v) => v.active === false);
+    const activeList = allVendors.filter((v) => v.active !== false);
 
-    const toggleVendor = (id, active) => {
-        setActiveList((l) =>
-            l.map((v) => (v.id === id ? { ...v, active } : v))
-        );
-        toast(
-            active ? "Vendor activated" : "Vendor suspended",
-            active ? "ok" : "bad"
-        );
+    const toggleVendor = async (id, active) => {
+        try {
+            await api.updateAdminVendor(id, { active });
+            toast(
+                active ? "Vendor activated" : "Vendor suspended",
+                active ? "ok" : "bad"
+            );
+            vendors.retry();
+        } catch (err) {
+            toast(err.message, "bad");
+        }
     };
 
     return (
@@ -113,22 +129,24 @@ export function AVendors() {
                 <div className="flex gap-2">
                     <Button
                         size="sm"
-                        variant={tab === "pending" ? "primary" : "outline"}
-                        onClick={() => setTab("pending")}
-                    >
-                        Applications ({pending.length})
-                    </Button>
-                    <Button
-                        size="sm"
                         variant={tab === "active" ? "primary" : "outline"}
                         onClick={() => setTab("active")}
                     >
                         Active Vendors ({activeList.length})
                     </Button>
+                    <Button
+                        size="sm"
+                        variant={tab === "pending" ? "primary" : "outline"}
+                        onClick={() => setTab("pending")}
+                    >
+                        Suspended / Pending ({pending.length})
+                    </Button>
                 </div>
             </div>
 
-            {tab === "pending" ? (
+            {vendors.error ? (
+                <ErrorState onRetry={vendors.retry} />
+            ) : tab === "pending" ? (
                 pending.length ? (
                     <ul className="space-y-3">
                         {pending.map((v) => (
@@ -140,30 +158,17 @@ export function AVendors() {
                                     <div>
                                         <p className="font-bold">{v.name}</p>
                                         <p className="text-sm text-ink-2">
-                                            {v.hall} · {v.cat} · {v.submitted}
+                                            {v.hall} · {v.bio || "Kitchen"}
                                         </p>
                                     </div>
-                                    <Badge tone="warn">
-                                        Pending verification
-                                    </Badge>
+                                    <Badge tone="warn">Inactive</Badge>
                                 </div>
                                 <div className="mt-3 flex gap-2">
                                     <Button
                                         size="sm"
-                                        onClick={() =>
-                                            act(v.id, `${v.name} approved`)
-                                        }
+                                        onClick={() => toggleVendor(v.id, true)}
                                     >
-                                        Approve
-                                    </Button>
-                                    <Button
-                                        size="sm"
-                                        variant="outline"
-                                        onClick={() =>
-                                            act(v.id, `${v.name} rejected`)
-                                        }
-                                    >
-                                        Reject
+                                        Activate kitchen
                                     </Button>
                                 </div>
                             </li>
@@ -171,11 +176,11 @@ export function AVendors() {
                     </ul>
                 ) : (
                     <EmptyState
-                        title="No pending applications"
-                        text="All applications have been reviewed."
+                        title="No suspended or pending kitchens"
+                        text="All registered kitchens are currently active."
                     />
                 )
-            ) : (
+            ) : activeList.length ? (
                 <div className="overflow-x-auto rounded-2xl border border-line bg-surface">
                     <table className="w-full text-left text-sm">
                         <thead className="border-b border-line text-xs text-ink-3">
@@ -198,12 +203,16 @@ export function AVendors() {
                                     </td>
                                     <td className="p-3 text-ink-2">{v.hall}</td>
                                     <td className="p-3">
-                                        <span className="inline-flex items-center gap-1 font-semibold text-xs text-ink">
-                                            <ThumbsUp className="h-3 w-3 text-brand-strong" /> {v.rating}{" "}
-                                            <span className="font-normal text-ink-3">
-                                                ({v.reviews})
+                                        {Number(v.reviews) > 0 && Number(v.rating) > 0 ? (
+                                            <span className="inline-flex items-center gap-1 font-semibold text-xs text-ink">
+                                                <ThumbsUp className="h-3 w-3 text-brand-strong" /> {v.rating}{" "}
+                                                <span className="font-normal text-ink-3">
+                                                    ({v.reviews})
+                                                </span>
                                             </span>
-                                        </span>
+                                        ) : (
+                                            <span className="text-xs text-ink-3">No ratings yet</span>
+                                        )}
                                     </td>
                                     <td className="p-3">
                                         <Badge tone={v.active ? "ok" : "bad"}>
@@ -212,7 +221,7 @@ export function AVendors() {
                                     </td>
                                     <td className="p-3">
                                         <Switch
-                                            checked={v.active}
+                                            checked={v.active !== false}
                                             label={`Toggle ${v.name}`}
                                             onChange={(checked) =>
                                                 toggleVendor(v.id, checked)
@@ -224,6 +233,11 @@ export function AVendors() {
                         </tbody>
                     </table>
                 </div>
+            ) : (
+                <EmptyState
+                    title="No active vendors yet"
+                    text="Kitchens will appear here once student chefs set up their kitchens."
+                />
             )}
         </div>
     );
@@ -429,25 +443,37 @@ export function AOrders() {
 
 export function ADisputes() {
     const toast = useToast();
-    const [list, setList] = useState(
-        [...DISPUTES].sort(
+    const cases = useAsync(() => api.cases(), []);
+
+    const list = useMemo(() => {
+        const raw = cases.data || [];
+        return [...raw].sort(
             (a, b) =>
                 (a.priority === "high" ? -1 : 1) -
                 (b.priority === "high" ? -1 : 1)
-        )
-    );
-    const close = (id, msg) => {
-        setList((l) => l.filter((x) => x.id !== id));
-        toast(msg);
+        );
+    }, [cases.data]);
+
+    const close = async (code, action, msg) => {
+        try {
+            await api.resolveCase(code, action);
+            toast(msg);
+            cases.retry();
+        } catch (err) {
+            toast(err.message, "bad");
+        }
     };
+
     return (
         <div className="space-y-4">
             <h1 className="text-2xl font-extrabold">Disputes</h1>
-            {list.length ? (
+            {cases.error ? (
+                <ErrorState onRetry={cases.retry} />
+            ) : list.length ? (
                 <ul className="space-y-3">
                     {list.map((d) => (
                         <li
-                            key={d.id}
+                            key={d.code || d.id}
                             className={`rounded-2xl border p-4 ${d.priority === "high" ? "border-bad bg-bad-soft" : "border-line bg-surface"}`}
                         >
                             <div className="flex items-center justify-between">
@@ -464,12 +490,16 @@ export function ADisputes() {
                             </div>
                             <p className="mt-1 font-semibold">{d.type}</p>
                             <p className="text-sm text-ink-2">
-                                Order {d.order} · {d.vendor}
+                                {d.order ? `Order ${d.order}` : "General support"}{" "}
+                                {d.vendor ? `· ${d.vendor}` : ""}
                             </p>
+                            {d.note && (
+                                <p className="mt-1 text-xs text-ink-2">{d.note}</p>
+                            )}
                             <div className="mt-3 flex gap-2">
                                 <Button
                                     size="sm"
-                                    onClick={() => close(d.id, "Refund issued")}
+                                    onClick={() => close(d.code, "refund", "Refund issued")}
                                 >
                                     Refund
                                 </Button>
@@ -477,7 +507,7 @@ export function ADisputes() {
                                     size="sm"
                                     variant="outline"
                                     onClick={() =>
-                                        close(d.id, "Case dismissed")
+                                        close(d.code, "dismiss", "Case dismissed")
                                     }
                                 >
                                     Dismiss
@@ -652,7 +682,7 @@ export function ACompliance() {
                         </div>
                     ))}
                 </div>
-            ) : (
+            ) : (records.data || []).length ? (
                 <div className="overflow-x-auto rounded-2xl border border-line bg-surface">
                     <table className="w-full text-left text-sm">
                         <thead className="border-b border-line text-xs text-ink-3">
@@ -698,6 +728,11 @@ export function ACompliance() {
                         </tbody>
                     </table>
                 </div>
+            ) : (
+                <EmptyState
+                    title="No compliance records yet"
+                    text="Vendor food hygiene permits will appear here as kitchens submit them."
+                />
             )}
         </div>
     );
@@ -843,7 +878,9 @@ export function APayouts() {
 }
 
 export function AAudit() {
-    const [logs] = useState(() => auditLog());
+    const audit = useAsync(() => api.auditLogs(), []);
+    const logs = audit.data || [];
+
     return (
         <div className="space-y-4">
             <div>
@@ -854,7 +891,9 @@ export function AAudit() {
                 </p>
             </div>
 
-            {logs.length ? (
+            {audit.error ? (
+                <ErrorState onRetry={audit.retry} />
+            ) : logs.length ? (
                 <div className="overflow-x-auto rounded-2xl border border-line bg-surface">
                     <table className="w-full text-left text-sm">
                         <thead className="border-b border-line text-xs text-ink-3">
@@ -903,55 +942,72 @@ export function AAudit() {
 }
 
 export function AUsers() {
-    const [users, setUsers] = useState(USERS);
+    const toast = useToast();
+    const users = useAsync(() => api.adminUsers(), []);
+    const list = users.data || [];
+
+    const toggleActive = async (u, nextActive) => {
+        try {
+            await api.updateAdminUser(u.id, { active: nextActive });
+            toast(
+                nextActive ? `${u.name} activated` : `${u.name} suspended`,
+                nextActive ? "ok" : "bad"
+            );
+            users.retry();
+        } catch (err) {
+            toast(err.message, "bad");
+        }
+    };
+
     return (
         <div className="space-y-4">
             <h1 className="text-2xl font-extrabold">Users</h1>
-            <div className="overflow-x-auto rounded-2xl border border-line bg-surface">
-                <table className="w-full text-left text-sm">
-                    <thead className="border-b border-line text-xs text-ink-3">
-                        <tr>
-                            <th className="p-3">Name</th>
-                            <th className="p-3">Email</th>
-                            <th className="p-3">Role</th>
-                            <th className="p-3">Active</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {users.map((u) => (
-                            <tr
-                                key={u.id}
-                                className="border-b border-line last:border-0"
-                            >
-                                <td className="p-3 font-semibold">{u.name}</td>
-                                <td className="p-3 text-ink-2">{u.email}</td>
-                                <td className="p-3">
-                                    <Badge>{u.role}</Badge>
-                                </td>
-                                <td className="p-3">
-                                    {u.role === 'admin' ? (
-                                        <Badge tone="brand">Protected Admin</Badge>
-                                    ) : (
-                                        <Switch
-                                            checked={u.active}
-                                            label={`${u.name} active`}
-                                            onChange={(v) =>
-                                                setUsers((l) =>
-                                                    l.map((x) =>
-                                                        x.id === u.id
-                                                            ? { ...x, active: v }
-                                                            : x
-                                                    )
-                                                )
-                                            }
-                                        />
-                                    )}
-                                </td>
+            {users.error ? (
+                <ErrorState onRetry={users.retry} />
+            ) : list.length ? (
+                <div className="overflow-x-auto rounded-2xl border border-line bg-surface">
+                    <table className="w-full text-left text-sm">
+                        <thead className="border-b border-line text-xs text-ink-3">
+                            <tr>
+                                <th className="p-3">Name</th>
+                                <th className="p-3">Email</th>
+                                <th className="p-3">Role</th>
+                                <th className="p-3">Active</th>
                             </tr>
-                        ))}
-                    </tbody>
-                </table>
-            </div>
+                        </thead>
+                        <tbody>
+                            {list.map((u) => (
+                                <tr
+                                    key={u.id}
+                                    className="border-b border-line last:border-0"
+                                >
+                                    <td className="p-3 font-semibold">{u.name}</td>
+                                    <td className="p-3 text-ink-2">{u.email}</td>
+                                    <td className="p-3">
+                                        <Badge>{u.role}</Badge>
+                                    </td>
+                                    <td className="p-3">
+                                        {u.role === "admin" ? (
+                                            <Badge tone="brand">Protected Admin</Badge>
+                                        ) : (
+                                            <Switch
+                                                checked={u.active !== false}
+                                                label={`${u.name} active`}
+                                                onChange={(v) => toggleActive(u, v)}
+                                            />
+                                        )}
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            ) : (
+                <EmptyState
+                    title="No users found"
+                    text="Registered student accounts will appear here."
+                />
+            )}
         </div>
     );
 }

@@ -2,20 +2,38 @@ import { VENDORS, MEALS } from './mockData'
 import { CAMPUS, CANCEL_WINDOW, feeFor, PAYSTACK_PUBLIC_KEY } from '../config'
 import { read, write, uid } from './utils'
 
-const BASE = import.meta.env.VITE_API_URL
+const rawBase = (import.meta.env.VITE_API_URL || '').trim()
+const BASE = rawBase.replace(/\/+$/, '')
 export const MOCK = !BASE
+// Safety guard: catch misconfigured production builds early
+if (MOCK && import.meta.env.PROD) {
+  console.error('[STEW] VITE_API_URL is not set but this is a production build. This is a configuration error — all API calls will use mock data.')
+}
+if (typeof window !== 'undefined' && import.meta.env.PROD && window.location.protocol === 'https:' && BASE.startsWith('http://')) {
+  console.warn('[STEW] Mixed content warning: HTTPS frontend is calling an insecure HTTP API URL. Configure VITE_API_URL with HTTPS.')
+}
 const wait = (ms = 350) => new Promise((r) => setTimeout(r, ms))
 
 async function http(path, { method = 'GET', body } = {}) {
   const token = localStorage.getItem('stew.token')
-  const res = await fetch(BASE + path, {
-    method,
-    headers: { 'Content-Type': 'application/json', ...(token && { Authorization: `Bearer ${token}` }) },
-    body: body && JSON.stringify(body),
-  })
-  const data = await res.json().catch(() => ({}))
-  if (!res.ok) throw Object.assign(new Error(data.detail || data.message || 'Something went wrong'), { code: data.code, status: res.status, fields: data.errors })
-  return data
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), 15000) // 15s timeout
+  try {
+    const res = await fetch(BASE + path, {
+      method,
+      headers: { 'Content-Type': 'application/json', ...(token && { Authorization: `Bearer ${token}` }) },
+      body: body && JSON.stringify(body),
+      signal: controller.signal,
+    })
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) throw Object.assign(new Error(data.detail || data.message || 'Something went wrong'), { code: data.code, status: res.status, fields: data.errors })
+    return data
+  } catch (err) {
+    if (err.name === 'AbortError') throw new Error('Request timed out. Please check your connection and try again.')
+    throw err
+  } finally {
+    clearTimeout(timeoutId)
+  }
 }
 const post = (path, body) => http(path, { method: 'POST', body })
 
@@ -33,10 +51,14 @@ const real = {
   updateMe: (p) => http('/auth/me/', { method: 'PATCH', body: p }),
   deleteAccount: () => http('/auth/delete-account/', { method: 'DELETE' }),
   vendors: () => http('/vendors/'),
-  vendor: (id) => http(`/vendors/${id}/`),
+  vendor: (id) => http(`/vendors/${encodeURIComponent(id)}/`),
   meals: () => http('/meals/'),
+  myMeals: () => http('/meals/?mine=true'),
+  createMeal: (p) => post('/meals/', p),
+  updateMeal: (id, p) => http(`/meals/${encodeURIComponent(id)}/`, { method: 'PATCH', body: p }),
+  deleteMeal: (id) => http(`/meals/${encodeURIComponent(id)}/`, { method: 'DELETE' }),
   createOrder: (p) => post('/orders/', p),
-  orders: () => http('/orders/'),
+  orders: (params) => http('/orders/' + (params?.scope ? `?scope=${encodeURIComponent(params.scope)}` : '')),
   order: (id) => http(`/orders/${id}/`),
   cancelOrder: (id) => post(`/orders/${id}/cancel/`),
 
@@ -66,7 +88,12 @@ const real = {
   completeByCode: (id, code) => post(`/orders/${id}/complete/`, { code }),
 
   // --- reviews: done by the back end, never by the browser -------------------
-  reviews: (vendorId) => http(`/vendors/${vendorId}/reviews/`),
+  reviews: (arg) => {
+    const vendorId = typeof arg === 'object' ? arg?.vendorId : arg
+    const includeHidden = typeof arg === 'object' && arg?.includeHidden
+    const qs = includeHidden ? '?includeHidden=true' : ''
+    return http(`/vendors/${encodeURIComponent(vendorId || '')}/reviews/${qs}`)
+  },
   moderationQueue: () => http('/admin/reviews/queue/'),
   moderateReview: (orderId, decision, reason) => post(`/admin/reviews/${orderId}/moderate/`, { decision, reason }),
 
@@ -81,6 +108,12 @@ const real = {
 
   createCase: (p) => post('/support/cases/', p),
   cases: () => http('/support/cases/'),
+  resolveCase: (code, action) => post(`/support/cases/${encodeURIComponent(code)}/resolve/`, { action }),
+  adminVendors: () => http('/admin/vendors/'),
+  updateAdminVendor: (id, p) => http(`/admin/vendors/${encodeURIComponent(id)}/`, { method: 'PATCH', body: p }),
+  adminUsers: () => http('/admin/users/'),
+  updateAdminUser: (id, p) => http(`/admin/users/${encodeURIComponent(id)}/`, { method: 'PATCH', body: p }),
+  auditLogs: () => http('/admin/audit/'),
   createReview: (p) => post('/reviews/', p),
   applyVendor: (p) => post('/vendor/apply/', p),
   markVendor: () => post('/vendor/activate/'),
@@ -126,90 +159,9 @@ const session = (u) => {
   return { access: 'mock-token', user }
 }
 const unverified = () => Object.assign(new Error('Please verify your email first'), { code: 'unverified' })
-const SAMPLE_ORDERS = [
-  {
-    id: 'STW-4821',
-    vendorId: 'v1',
-    vendorName: "Auntie Ama's Soup Pot",
-    customer: 'Kofi A.',
-    email: 'kofi@st.knust.edu.gh',
-    phone: '0240000001',
-    area: 'Unity Hall (Conti)',
-    lines: [
-      { mealId: 'm1', name: 'Palm nut soup (abenkwan)', price: 45, qty: 1, note: 'Extra pepper please' },
-      { mealId: 'm11', name: 'Fufu (2 balls)', price: 12, qty: 1, note: '' },
-    ],
-    subtotal: 57,
-    fee: 2.85,
-    total: 59.85,
-    handoffCode: '482190',
-    pickupDay: '2026-10-14',
-    pickupSlot: 'afternoon',
-    payment: { status: 'paid', provider: 'paystack', reference: 'PSK-48210001', paidAt: Date.now() - 3600_000 * 5 },
-    prepStage: 'accepted',
-    prepAt: { accepted: Date.now() - 3600_000 * 5 },
-    createdAt: Date.now() - 3600_000 * 5,
-    meetup: { place: 'Unity Hall main entrance', proposedBy: 'vendor', proposedAt: Date.now() - 3600_000 * 4, confirmedBy: ['vendor'], agreed: false },
-    messages: [{ from: 'student', text: 'Please make it small pepper.', at: Date.now() - 3600_000 * 3 }],
-  },
-  {
-    id: 'STW-4822',
-    vendorId: 'v2',
-    vendorName: "Mama Efua's Kitchen",
-    customer: 'Abena M.',
-    email: 'abena@st.knust.edu.gh',
-    phone: '0240000002',
-    area: 'Queen Elizabeth II Hall (Queens)',
-    lines: [
-      { mealId: 'm3', name: 'Light soup with goat', price: 48, qty: 1, note: '' },
-    ],
-    subtotal: 48,
-    fee: 2.40,
-    total: 50.40,
-    handoffCode: '482219',
-    pickupDay: '2026-10-13',
-    pickupSlot: 'evening',
-    payment: { status: 'paid', provider: 'paystack', reference: 'PSK-48220002', paidAt: Date.now() - 86400_000 },
-    prepStage: 'cooking',
-    prepAt: { accepted: Date.now() - 86400_000, shopping: Date.now() - 43200_000, cooking: Date.now() - 7200_000 },
-    createdAt: Date.now() - 86400_000,
-    meetup: { place: 'Queen Elizabeth II Hall entrance', proposedBy: 'student', proposedAt: Date.now() - 7200_000, confirmedBy: ['student', 'vendor'], agreed: true, agreedAt: Date.now() - 7000_000 },
-    messages: [],
-  },
-  {
-    id: 'STW-4820',
-    vendorId: 'v1',
-    vendorName: "Auntie Ama's Soup Pot",
-    customer: 'Kofi A.',
-    email: 'kofi@st.knust.edu.gh',
-    phone: '0240000001',
-    area: 'Unity Hall (Conti)',
-    lines: [
-      { mealId: 'm2', name: 'Groundnut soup', price: 42, qty: 1, note: '' },
-    ],
-    subtotal: 42,
-    fee: 2.10,
-    total: 44.10,
-    handoffCode: '482001',
-    pickupDay: '2026-10-07',
-    pickupSlot: 'morning',
-    payment: { status: 'released', provider: 'paystack', reference: 'PSK-48200003', paidAt: Date.now() - 86400_000 * 2, releasedAt: Date.now() - 86400_000 },
-    prepStage: 'collected',
-    prepAt: { accepted: Date.now() - 86400_000 * 3, shopping: Date.now() - 86400_000 * 2, cooking: Date.now() - 86400_000 * 2, packing: Date.now() - 86400_000, ready: Date.now() - 86400_000, collected: Date.now() - 86400_000 },
-    collectedAt: Date.now() - 86400_000,
-    settlement: { status: 'released', releasedAt: Date.now() - 86400_000, net: 42 },
-    createdAt: Date.now() - 86400_000 * 3,
-    meetup: { place: 'Unity Hall main entrance', proposedBy: 'vendor', confirmedBy: ['student', 'vendor'], agreed: true },
-    messages: [],
-  },
-]
+const SAMPLE_ORDERS = []
 
-const SAMPLE_REVIEWS = [
-  { orderId: 'STW-1001', vendorId: 'v1', vendorName: "Auntie Ama's Soup Pot", rating: 5, tags: ['Tasty', 'Good portion', 'Fresh'], text: 'The abenkwan was incredible. Smoked fish and wele were fresh and tender.', createdAt: Date.now() - 86400_000 * 3, moderationStatus: 'visible' },
-  { orderId: 'STW-1002', vendorId: 'v1', vendorName: "Auntie Ama's Soup Pot", rating: 5, tags: ['Hot', 'Tasty'], text: 'Groundnut soup was well spiced and delivered hot at Unity hall.', createdAt: Date.now() - 86400_000 * 2, moderationStatus: 'visible' },
-  { orderId: 'STW-1003', vendorId: 'v2', vendorName: "Mama Efua's Kitchen", rating: 5, tags: ['Tasty', 'Fast'], text: 'Light soup goat meat is very soft and spicy!', createdAt: Date.now() - 86400_000 * 4, moderationStatus: 'visible' },
-  { orderId: 'STW-1004', vendorId: 'v3', vendorName: "Chef Kojo's Stews", rating: 4, tags: ['Good value'], text: 'Very generous chicken portion. Highly recommended for students.', createdAt: Date.now() - 86400_000 * 1, moderationStatus: 'pending' },
-]
+const SAMPLE_REVIEWS = []
 
 const getOrders = () => {
   const saved = read('stew.orders', null)
@@ -478,6 +430,7 @@ const mock = {
     const o = getOrders().find((x) => x.id === id)
     if (!o) throw new Error('Order not found')
     if (o.cancelledAt) throw new Error('This order was cancelled')
+    if (o.payment?.status !== 'paid' && o.payment?.status !== 'released') throw new Error('This order was never paid for')
     if (!o.handoffCode) throw new Error('This order has no handoff code')
     if (String(code || '').trim() !== String(o.handoffCode)) throw new Error('That code does not match this order')
     if (o.collectedAt) return full(o)
@@ -630,14 +583,40 @@ const mock = {
   async allCompliance() {
     await wait(200)
     const one = read('stew.compliance', null)
-    // Sample rows so the admin screen has something to show before vendors exist.
-    const sample = [
-      { vendorId: 'esi@st.knust.edu.gh', vendorName: "Esi's Swallow Kitchen", type: 'FDA food hygiene permit', number: 'FDA/KN/2026/8841', issuedAt: '2026-02-01', expiresAt: '2027-02-01', reviewedBy: 'admin@st.knust.edu.gh' },
-      { vendorId: 'yaw@st.knust.edu.gh', vendorName: "Yaw's Palm Nut", type: 'FDA food hygiene permit', number: 'FDA/KN/2025/1190', issuedAt: '2025-01-15', expiresAt: '2026-01-15', reviewedBy: '' },
-      { vendorId: 'kojo@st.knust.edu.gh', vendorName: "Chef Kojo's Stews", type: 'FDA food hygiene permit', number: '', issuedAt: '', expiresAt: '', reviewedBy: '' },
-    ]
-    return one ? [one, ...sample] : sample
+    return one ? [one] : []
   },
+  async myMeals() { return read('stew.myMenu', []) },
+  async createMeal(p) {
+    const next = { id: uid(), ...p }
+    write('stew.myMenu', [next, ...read('stew.myMenu', [])])
+    return next
+  },
+  async updateMeal(id, p) {
+    const list = read('stew.myMenu', []).map((x) => (x.id === id ? { ...x, ...p } : x))
+    write('stew.myMenu', list)
+    return list.find((x) => x.id === id)
+  },
+  async deleteMeal(id) {
+    write('stew.myMenu', read('stew.myMenu', []).filter((x) => x.id !== id))
+    return { ok: true }
+  },
+  async resolveCase(code) {
+    write('stew.cases', read('stew.cases', []).filter((c) => c.code !== code))
+    return { ok: true }
+  },
+  async adminVendors() { return read('stew.vendors', VENDORS) },
+  async updateAdminVendor(id, p) {
+    const list = read('stew.vendors', VENDORS).map((v) => (v.id === id ? { ...v, ...p } : v))
+    write('stew.vendors', list)
+    return list.find((v) => v.id === id)
+  },
+  async adminUsers() { return read('stew.users', []) },
+  async updateAdminUser(id, p) {
+    const list = read('stew.users', []).map((u) => (u.id === id ? { ...u, ...p } : u))
+    write('stew.users', list)
+    return list.find((u) => u.id === id)
+  },
+  async auditLogs() { return read(AUDIT_KEY, []) },
 
   // ---- payout batches: aggregate, do not transfer per order (project.md §16.5) ----
   async payoutBatches() { await wait(150); return read('stew.payoutBatches', []) },

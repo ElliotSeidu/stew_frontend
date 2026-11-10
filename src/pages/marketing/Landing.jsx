@@ -1,4 +1,6 @@
+import { useRef, useState } from "react";
 import {
+    ArrowRight,
     BadgeCheck,
     Bell,
     Check,
@@ -16,9 +18,16 @@ import {
 import { SiteFooter, SiteHeader } from "../../components/Site";
 import { Button, Food } from "../../components/ui";
 import { CAMPUS } from "../../config";
-import { MEALS } from "../../lib/mockData";
-import { useInstall } from "../../lib/hooks";
+import { api } from "../../lib/api";
+import { useAsync, useInstall } from "../../lib/hooks";
 import { money } from "../../lib/utils";
+
+const HERO_VISUALS = [
+    { name: "Palm nut soup", image: "/foods/palm-nut-soup.jpg" },
+    { name: "Groundnut soup", image: "/foods/groundnut-soup.jpg" },
+    { name: "Light soup", image: "/foods/light-soup.jpg" },
+    { name: "Chicken stew", image: "/foods/chicken-stew.jpg" },
+];
 
 const STEPS = [
     {
@@ -42,6 +51,7 @@ const STEPS = [
         d: "Follow your pot from shopping to cooked, then collect it on the day you chose.",
     },
 ];
+
 const FEATURES = [
     {
         icon: Flame,
@@ -74,6 +84,7 @@ const FEATURES = [
         d: "Rate your meal, and raise a case in a few taps if something is wrong.",
     },
 ];
+
 const FAQ = [
     [
         "Who can use STEW?",
@@ -109,6 +120,75 @@ const FAQ = [
     ],
 ];
 
+const HERO_MS = 6000;
+
+const HERO_SLIDES = [
+    {
+        icon: Flame,
+        badge: "KNUST Student Food Network",
+        title: (
+            <>
+                Order great food <br className="hidden sm:block" />
+                near you with <span className="text-brand">STEW!</span>
+            </>
+        ),
+        sub: "Fast, fresh homemade meals cooked by verified KNUST student chefs. Pay with MoMo, track your batch, and collect at your hall.",
+        points: ["KNUST emails only", "Pay with MoMo", "Campus pickup points"],
+        cta: { label: "Get Started", to: "/app/signup" },
+        cta2: { label: "See how it works", href: "#how" },
+    },
+    {
+        icon: BadgeCheck,
+        badge: "Verified Student Chefs",
+        title: (
+            <>
+                Eat from kitchens <br className="hidden sm:block" />
+                you can <span className="text-brand">trust</span>
+            </>
+        ),
+        sub: "Every kitchen belongs to a KNUST student, reviewed before they can sell. Follow your pot from shopping to cooked, step by step.",
+        points: [
+            "Reviewed kitchens",
+            "Live order tracking",
+            "Reviews & disputes",
+        ],
+        cta: { label: "Browse the menu", to: "/app" },
+        cta2: { label: "See features", href: "#features" },
+    },
+    {
+        icon: Wallet,
+        badge: "MoMo Payments & Campus Pickup",
+        title: (
+            <>
+                Pay with MoMo. <br className="hidden sm:block" />
+                Collect at <span className="text-brand">your hall</span>
+            </>
+        ),
+        sub: "Approve the prompt on MTN MoMo, Telecel Cash or AT Money, then pick your collection day at checkout. Prices shown in GH¢ before you confirm.",
+        points: ["Mobile Money only", "Pickup locations", "Clear GH¢ pricing"],
+        cta: { label: "See how it works", href: "#how" },
+        cta2: { label: "View coverage", href: "#halls" },
+    },
+    {
+        icon: ChefHat,
+        badge: "For Student Chefs",
+        title: (
+            <>
+                Cook? Turn your kitchen <br className="hidden sm:block" />
+                into a <span className="text-brand">campus business</span>
+            </>
+        ),
+        sub: "STEW gives you the storefront, the live order queue and MoMo payouts. Add your menu, set your prices, start cooking.",
+        points: [
+            "Your menu, your prices",
+            "Live order queue",
+            "Payouts to MoMo",
+        ],
+        cta: { label: "Become a vendor", to: "/app/signup" },
+        cta2: { label: "How selling works", href: "#chefs" },
+    },
+];
+
 function Section({ id, kicker, title, sub, children, className = "" }) {
     return (
         <section
@@ -131,102 +211,184 @@ function Section({ id, kicker, title, sub, children, className = "" }) {
     );
 }
 
+function HeroButton({ cta, primary }) {
+    const target = cta.to ? { to: cta.to } : { href: cta.href };
+    return primary ? (
+        <Button
+            {...target}
+            size="lg"
+            className="!h-11 !rounded-full !bg-white !px-5 text-sm font-bold !text-black shadow-lg transition-transform hover:!bg-white/90 active:scale-95 sm:!h-14 sm:!px-8 sm:text-base"
+        >
+            {cta.label}
+            <ArrowRight className="h-4 w-4" />
+        </Button>
+    ) : (
+        <Button
+            {...target}
+            size="lg"
+            variant="outline"
+            className="!h-11 !rounded-full !border-white/30 !bg-white/10 !px-5 text-sm font-bold !text-white backdrop-blur-md hover:!bg-white/20 sm:!h-14 sm:!px-7"
+        >
+            {cta.label}
+        </Button>
+    );
+}
+
 export default function Landing() {
     const { canInstall, install } = useInstall();
-    const sample = MEALS.filter((m) => m.open && m.left > 0).slice(0, 3);
+    const liveMealsRes = useAsync(() => api.meals(), []);
+    const liveMeals = (liveMealsRes.data || [])
+        .filter((m) => m.open && m.left > 0)
+        .slice(0, 4);
+
+    // Hero carousel state
+    const [heroIndex, setHeroIndex] = useState(0);
+    const [heroPaused, setHeroPaused] = useState(false);
+    const touchX = useRef(0);
+
+    const count = HERO_SLIDES.length;
+    const goToSlide = (i) => setHeroIndex(i);
+    const nextSlide = () => setHeroIndex((i) => (i + 1) % count);
+    const prevSlide = () => setHeroIndex((i) => (i - 1 + count) % count);
+
+    const onTouchStart = (e) => {
+        touchX.current = e.touches[0].clientX;
+    };
+    const onTouchEnd = (e) => {
+        const dx = e.changedTouches[0].clientX - touchX.current;
+        if (dx < -50) nextSlide();
+        else if (dx > 50) prevSlide();
+    };
+
     return (
         <div>
+            <style>{`@keyframes stew-hero-bar{from{width:0}to{width:100%}}`}</style>
             <SiteHeader />
             <main>
-                {/* HERO MATCHING SCREEN 1 IN INSP.WEBP */}
-                <div className="mx-auto max-w-6xl px-4 py-6 md:py-12">
-                    <div className="relative overflow-hidden rounded-[2.5rem] bg-surface dark:bg-[#141518] p-8 text-ink dark:text-white shadow-xl sm:p-12 lg:p-16 border border-line/80 dark:border-white/10">
-                        {/* Status / Skip bar on top matching Screen 1 in insp.webp */}
-                        <div className="mb-8 flex items-center justify-between text-xs font-bold text-ink-3 dark:text-zinc-400">
-                            <div className="flex items-center gap-1.5">
-                                <span className="h-1.5 w-12 rounded-full bg-brand" />
-                                <span className="h-1.5 w-12 rounded-full bg-brand" />
-                                <span className="h-1.5 w-12 rounded-full bg-brand" />
-                            </div>
-                            <Button to="/app" variant="ghost" size="sm" className="!h-8 !px-3 text-xs text-ink-2 hover:text-ink hover:bg-sunken dark:text-zinc-300 dark:hover:text-white dark:hover:bg-white/10 !rounded-full">
-                                Skip to food
-                            </Button>
+                {/* HERO — AUTO-SWIPING CAROUSEL */}
+                <div className="mx-auto max-w-6xl px-4 py-6 md:py-10">
+                    <div
+                        className="relative h-[38rem] overflow-hidden rounded-[2rem] border border-line/80 bg-black shadow-xl sm:rounded-[2.5rem] md:h-[42rem] dark:border-white/10"
+                        onMouseEnter={() => setHeroPaused(true)}
+                        onMouseLeave={() => setHeroPaused(false)}
+                        onTouchStart={onTouchStart}
+                        onTouchEnd={onTouchEnd}
+                    >
+                        {/* Slides track */}
+                        <div
+                            className="flex h-full transition-transform duration-700 ease-[cubic-bezier(0.22,1,0.36,1)]"
+                            style={{
+                                transform: `translateX(-${heroIndex * 100}%)`,
+                            }}
+                        >
+                            {HERO_SLIDES.map((s, i) => {
+                                const meal =
+                                    liveMeals[i % (liveMeals.length || 1)] ||
+                                    HERO_VISUALS[i % HERO_VISUALS.length];
+                                return (
+                                    <div
+                                        key={i}
+                                        aria-hidden={i !== heroIndex}
+                                        className="relative h-full w-full shrink-0"
+                                    >
+                                        {/* Photo */}
+                                        <Food
+                                            meal={meal}
+                                            frame=""
+                                            className="absolute inset-0 h-full w-full object-cover"
+                                        />
+
+                                        {/* Scrims */}
+                                        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/45 to-black/10" />
+                                        <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-black/20 to-transparent" />
+                                        <div className="absolute inset-0 bg-gradient-to-tr from-brand/40 via-transparent to-transparent" />
+
+                                        {/* Copy */}
+                                        <div className="absolute inset-x-0 bottom-0 p-5 sm:p-10 lg:p-14">
+                                            <div className="max-w-xl space-y-4 text-white sm:space-y-5">
+                                                <span className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-1.5 text-xs font-bold backdrop-blur-md sm:px-4">
+                                                    <s.icon className="h-3.5 w-3.5 shrink-0 text-brand" />
+                                                    {s.badge}
+                                                </span>
+                                                <h1 className="text-[1.9rem] font-bold leading-[1.1] tracking-tight sm:text-5xl sm:leading-[1.05] lg:text-6xl">
+                                                    {s.title}
+                                                </h1>
+                                                <p className="line-clamp-3 max-w-lg text-sm font-medium leading-relaxed text-white/80 sm:line-clamp-none sm:text-base lg:text-lg">
+                                                    {s.sub}
+                                                </p>
+                                                <div className="flex flex-wrap items-center gap-2.5 pt-1 sm:gap-3">
+                                                    <HeroButton
+                                                        cta={s.cta}
+                                                        primary
+                                                    />
+                                                    <HeroButton cta={s.cta2} />
+                                                </div>
+                                                <ul className="hidden flex-wrap gap-x-6 gap-y-2 pt-1 text-xs font-bold text-white/80 sm:flex">
+                                                    {s.points.map((t) => (
+                                                        <li
+                                                            key={t}
+                                                            className="flex items-center gap-1.5"
+                                                        >
+                                                            <Check className="h-4 w-4 text-brand" />
+                                                            {t}
+                                                        </li>
+                                                    ))}
+                                                </ul>
+                                            </div>
+                                        </div>
+                                    </div>
+                                );
+                            })}
                         </div>
 
-                        <div className="grid items-center gap-12 lg:grid-cols-12">
-                            {/* Left content */}
-                            <div className="space-y-6 lg:col-span-7">
-                                <span className="inline-flex items-center gap-2 rounded-full bg-brand-soft/70 px-4 py-1.5 text-xs font-bold text-brand-strong backdrop-blur-md border border-brand/20 dark:bg-white/10 dark:text-brand dark:border-white/10">
-                                    <Flame className="h-3.5 w-3.5 text-brand-strong dark:text-brand" />
-                                    KNUST Student Food Network
-                                </span>
-
-                                <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight leading-[1.08] text-ink dark:text-white">
-                                    Order great food <br />
-                                    near you with <span className="text-brand">STEW !</span>
-                                </h1>
-
-                                <p className="text-base sm:text-lg text-ink-2 dark:text-zinc-300 max-w-lg font-medium leading-relaxed">
-                                    Fast, fresh homemade meals cooked by verified KNUST student chefs. Pay with MoMo, track your batch, and collect at your hall.
-                                </p>
-
-                                <div className="flex flex-wrap items-center gap-4 pt-2">
-                                    <Button
-                                        to="/app/signup"
-                                        size="lg"
-                                        className="!h-14 !px-8 text-base font-black !rounded-full shadow-lg shadow-brand/20 hover:scale-105 active:scale-95 transition-transform"
+                        {/* Progress bars + Skip */}
+                        <div className="absolute inset-x-0 top-0 z-20 flex items-center justify-between gap-3 p-4 sm:gap-6 sm:p-8">
+                            <div className="flex min-w-0 items-center gap-1 sm:gap-1.5">
+                                {HERO_SLIDES.map((s, i) => (
+                                    <button
+                                        key={i}
+                                        onClick={() => goToSlide(i)}
+                                        aria-label={`Go to slide ${i + 1}: ${s.badge}`}
+                                        className="flex h-6 w-8 items-center sm:w-14"
                                     >
-                                        Get Started
-                                    </Button>
-                                    <Button
-                                        href="#how"
-                                        size="lg"
-                                        variant="outline"
-                                        className="!h-14 !px-7 text-sm font-bold !rounded-full border-line/80 bg-sunken/60 text-ink hover:bg-line/40 dark:border-white/20 dark:bg-white/5 dark:text-white dark:hover:bg-white/10"
-                                    >
-                                        See how it works
-                                    </Button>
-                                </div>
-
-                                <ul className="flex flex-wrap gap-x-6 gap-y-2 pt-2 text-xs font-bold text-ink-2 dark:text-zinc-300">
-                                    {["KNUST emails only", "Pay with MoMo", "Campus Pickup points"].map((t) => (
-                                        <li key={t} className="flex items-center gap-1.5">
-                                            <Check className="h-4 w-4 text-brand-strong dark:text-brand" />
-                                            {t}
-                                        </li>
-                                    ))}
-                                </ul>
-                            </div>
-
-                            {/* Right Hero Visual Showcase */}
-                            <div className="relative lg:col-span-5 flex justify-center">
-                                <div className="relative w-full max-w-sm rounded-[2rem] bg-sunken/60 dark:bg-gradient-to-b dark:from-white/10 dark:to-white/5 p-4 backdrop-blur-md border border-line/80 dark:border-white/15 shadow-xl">
-                                    <div className="relative aspect-[4/3] overflow-hidden rounded-2xl bg-canvas border border-line/60 dark:border-white/10">
-                                        <Food meal={sample[0]} frame="" className="h-full w-full object-cover" />
-                                        <div className="absolute right-3 top-3 rounded-full bg-black/60 backdrop-blur-md px-3 py-1 text-xs font-black text-brand border border-white/10 flex items-center gap-1">
-                                            <Flame className="h-3.5 w-3.5 text-warn" />
-                                            <span>100% Homemade</span>
-                                        </div>
-                                    </div>
-
-                                    <div className="mt-4 space-y-1.5">
-                                        <div className="flex items-center justify-between">
-                                            <h3 className="font-black text-lg text-ink dark:text-white">{sample[0]?.name || 'Palm nut soup'}</h3>
-                                            <span className="num font-black text-brand-strong dark:text-brand text-lg">{money(sample[0]?.price || 45)}</span>
-                                        </div>
-                                        <p className="text-xs text-ink-3 dark:text-zinc-300 font-medium">{sample[0]?.vendorName || "Auntie Ama's Soup Pot"}</p>
-                                    </div>
-
-                                    <div className="mt-4 flex items-center justify-between border-t border-line/70 dark:border-white/10 pt-3 text-xs font-bold text-ink-2 dark:text-zinc-300">
-                                        <span className="flex items-center gap-1">
-                                            <ShieldCheck className="h-4 w-4 text-brand-strong dark:text-brand" /> Verified Chef
+                                        <span className="relative h-1.5 w-full overflow-hidden rounded-full bg-white/30">
+                                            <span
+                                                key={
+                                                    i === heroIndex
+                                                        ? "on"
+                                                        : "off"
+                                                }
+                                                className="absolute inset-y-0 left-0 rounded-full bg-white"
+                                                style={
+                                                    i === heroIndex
+                                                        ? {
+                                                              animation: `stew-hero-bar ${HERO_MS}ms linear forwards`,
+                                                              animationPlayState:
+                                                                  heroPaused
+                                                                      ? "paused"
+                                                                      : "running",
+                                                          }
+                                                        : {
+                                                              width:
+                                                                  i < heroIndex
+                                                                      ? "100%"
+                                                                      : "0%",
+                                                          }
+                                                }
+                                                onAnimationEnd={nextSlide}
+                                            />
                                         </span>
-                                        <span className="flex items-center gap-1">
-                                            <Clock className="h-4 w-4 text-amber-500 dark:text-amber-400" /> Weekly Batch
-                                        </span>
-                                    </div>
-                                </div>
+                                    </button>
+                                ))}
                             </div>
+                            <Button
+                                to="/app"
+                                variant="ghost"
+                                size="sm"
+                                className="!inline-flex !h-8 shrink-0 items-center justify-center whitespace-nowrap !rounded-full !bg-white/15 !px-3 text-xs leading-none !text-white backdrop-blur-md hover:!bg-white/25 sm:!px-4 sm:text-sm"
+                            >
+                                Skip to food
+                            </Button>
                         </div>
                     </div>
                 </div>
@@ -273,8 +435,12 @@ export default function Landing() {
                                         0{i + 1}
                                     </span>
                                 </div>
-                                <h3 className="font-extrabold text-base">{s.t}</h3>
-                                <p className="mt-2 text-sm text-ink-2 font-medium">{s.d}</p>
+                                <h3 className="font-extrabold text-base">
+                                    {s.t}
+                                </h3>
+                                <p className="mt-2 text-sm text-ink-2 font-medium">
+                                    {s.d}
+                                </p>
                             </li>
                         ))}
                     </ol>
@@ -297,7 +463,9 @@ export default function Landing() {
                                     <span className="mb-4 grid h-11 w-11 place-items-center rounded-2xl bg-brand-soft text-brand-strong shadow-xs">
                                         <f.icon className="h-5 w-5" />
                                     </span>
-                                    <h3 className="font-extrabold text-base">{f.t}</h3>
+                                    <h3 className="font-extrabold text-base">
+                                        {f.t}
+                                    </h3>
                                     <p className="mt-2 text-sm text-ink-2 font-medium">
                                         {f.d}
                                     </p>
@@ -328,42 +496,53 @@ export default function Landing() {
                 </Section>
 
                 {/* MENU PREVIEW */}
-                <div className="bg-sunken/40">
-                    <Section
-                        kicker="On the menu"
-                        title="What KNUST is eating"
-                        sub="Sample items for illustration. Real menus appear once you sign in."
-                    >
-                        <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 lg:grid-cols-4">
-                            {MEALS.slice(0, 4).map((m) => (
-                                <div
-                                    key={m.id}
-                                    className="flex flex-col rounded-[1.75rem] border border-line/70 bg-surface p-3 sm:p-3.5 shadow-xs transition hover:shadow-md"
-                                >
-                                    <div className="aspect-[4/3] overflow-hidden rounded-2xl bg-sunken mb-2.5">
-                                        <Food meal={m} frame="" className="h-full w-full object-cover" />
-                                    </div>
-                                    <div className="flex-1 flex flex-col px-1">
-                                        <p className="text-sm font-extrabold truncate text-ink">
-                                            {m.name}
-                                        </p>
-                                        <p className="text-xs font-semibold text-ink-3">
-                                            {m.vendorName}
-                                        </p>
-                                        <div className="mt-auto pt-3 flex items-center justify-between">
-                                            <span className="num font-black text-ink text-sm sm:text-base">
-                                                {money(m.price)}
-                                            </span>
-                                            <Button to="/app" variant="outline" size="sm" className="!h-7 !px-3 text-xs">
-                                                Order
-                                            </Button>
+                {liveMeals.length > 0 && (
+                    <div className="bg-sunken/40">
+                        <Section
+                            kicker="On the menu"
+                            title="What KNUST is eating"
+                            sub="Live pots cooking on campus right now."
+                        >
+                            <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 lg:grid-cols-4">
+                                {liveMeals.map((m) => (
+                                    <div
+                                        key={m.id}
+                                        className="flex flex-col rounded-[1.75rem] border border-line/70 bg-surface p-3 sm:p-3.5 shadow-xs transition hover:shadow-md"
+                                    >
+                                        <div className="aspect-[4/3] overflow-hidden rounded-2xl bg-sunken mb-2.5">
+                                            <Food
+                                                meal={m}
+                                                frame=""
+                                                className="h-full w-full object-cover"
+                                            />
+                                        </div>
+                                        <div className="flex-1 flex flex-col px-1">
+                                            <p className="text-sm font-extrabold truncate text-ink">
+                                                {m.name}
+                                            </p>
+                                            <p className="text-xs font-semibold text-ink-3">
+                                                {m.vendorName}
+                                            </p>
+                                            <div className="mt-auto pt-3 flex items-center justify-between">
+                                                <span className="num font-black text-ink text-sm sm:text-base">
+                                                    {money(m.price)}
+                                                </span>
+                                                <Button
+                                                    to="/app"
+                                                    variant="outline"
+                                                    size="sm"
+                                                    className="!h-7 !px-3 text-xs"
+                                                >
+                                                    Order
+                                                </Button>
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
-                            ))}
-                        </div>
-                    </Section>
-                </div>
+                                ))}
+                            </div>
+                        </Section>
+                    </div>
+                )}
 
                 {/* CHEFS */}
                 <Section

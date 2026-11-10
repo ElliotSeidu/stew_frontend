@@ -91,10 +91,14 @@ export default function VendorPage() {
             <div className="mt-3 flex flex-wrap items-center gap-2">
               <Verified />
               <Badge tone={v.open ? 'ok' : 'mute'}>{v.open ? 'Cooking now' : 'Closed'}</Badge>
-              <span className="inline-flex items-center gap-1.5 text-xs font-extrabold text-brand-strong">
-                <ThumbsUp className="h-3.5 w-3.5" />
-                {v.rating} <span className="font-semibold text-ink-3">({v.reviews || (reviews.data || []).length || 0})</span>
-              </span>
+              {(Number(v.reviews) > 0 || (reviews.data || []).length > 0) && Number(v.rating) > 0 ? (
+                <span className="inline-flex items-center gap-1.5 text-xs font-extrabold text-brand-strong">
+                  <ThumbsUp className="h-3.5 w-3.5" />
+                  {v.rating} <span className="font-semibold text-ink-3">({v.reviews || (reviews.data || []).length})</span>
+                </span>
+              ) : (
+                <span className="text-xs font-semibold text-ink-3">No ratings yet</span>
+              )}
               <span className="inline-flex items-center gap-1 text-xs font-semibold text-ink-2">
                 <Clock className="h-3.5 w-3.5 text-brand-strong" />~{v.prep} min prep
               </span>
@@ -164,10 +168,14 @@ export default function VendorPage() {
           <h2 id="reviews" className="text-xl sm:text-2xl font-black text-ink">
             Customer Reviews
           </h2>
-          <span className="flex items-center gap-1.5 text-xs font-extrabold text-brand-strong">
-            <ThumbsUp className="h-4 w-4" />
-            {v.rating} <span className="font-semibold text-ink-3">({v.reviews || (reviews.data || []).length || 0})</span>
-          </span>
+          {(Number(v.reviews) > 0 || (reviews.data || []).length > 0) && Number(v.rating) > 0 ? (
+            <span className="flex items-center gap-1.5 text-xs font-extrabold text-brand-strong">
+              <ThumbsUp className="h-4 w-4" />
+              {v.rating} <span className="font-semibold text-ink-3">({v.reviews || (reviews.data || []).length})</span>
+            </span>
+          ) : (
+            <span className="text-xs font-semibold text-ink-3">No ratings yet</span>
+          )}
         </div>
         {reviews.loading && !reviews.data ? (
           <Skeleton className="h-28" />

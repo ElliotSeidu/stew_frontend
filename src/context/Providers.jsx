@@ -52,51 +52,93 @@ function ToastProvider({ children }) {
   )
 }
 
+function sanitizeCachedUser(u) {
+  if (!u || typeof u !== 'object') return null
+  // Never persist passwords or verification hashes in localStorage
+  // eslint-disable-next-line no-unused-vars
+  const { password, verification_code_hash, reset_code_hash, login_code_hash, ...safe } = u
+  return {
+    id: safe.id,
+    email: safe.email,
+    fullName: safe.fullName,
+    role: safe.role,
+    accountType: safe.accountType,
+    isVendor: safe.isVendor,
+    isAdmin: safe.isAdmin,
+    verified: safe.verified,
+    area: safe.area ?? safe.hall,
+    hall: safe.hall ?? safe.area,
+    phone: safe.phone,
+    referenceId: safe.referenceId,
+    kitchenName: safe.kitchenName,
+    sells: safe.sells,
+    bio: safe.bio,
+    prep: safe.prep,
+    payout: safe.payout,
+    logo: safe.logo,
+    vendorId: safe.vendorId,
+    kitchenOpen: safe.kitchenOpen,
+  }
+}
+
 function AuthProvider({ children }) {
   const [user, setUser] = useState(() => read('stew.me'))
   useEffect(() => {
-    if (localStorage.getItem('stew.token')) api.me().then((u) => { setUser(u); write('stew.me', u) }).catch(() => {})
+    if (localStorage.getItem('stew.token')) {
+      api.me().then((u) => {
+        const clean = sanitizeCachedUser(u)
+        setUser(clean)
+        write('stew.me', clean)
+      }).catch(() => {})
+    }
   }, [])
   const start = (r) => {
     localStorage.setItem('stew.token', r.access)
-    write('stew.me', r.user)
-    setUser(r.user)
-    return r.user
+    const cached = sanitizeCachedUser(r.user)
+    write('stew.me', cached)
+    setUser(cached)
+    return cached
   }
   const value = useMemo(() => ({
     user,
     register: api.register,
-    verify: api.verify,
+    verify: async (c) => {
+      const r = await api.verify(c)
+      return r?.access && r?.user ? start(r) : r
+    },
     resend: api.resend,
     login: async (c) => start(await api.login(c)),
     loginWithCode: async (c) => start(await api.loginWithCode(c)),
-    updateUser: (u) => { write('stew.me', u); setUser(u); return u },
+    updateUser: (u) => {
+      const clean = sanitizeCachedUser(u)
+      write('stew.me', clean)
+      setUser(clean)
+      return clean
+    },
     // A vendor account can also order food, and a customer can apply to start selling.
     // These flags are what the route guard and the Account screen read.
     isVendor: !!(user?.isVendor || user?.role === 'vendor'),
     isAdmin: !!(user?.isAdmin || user?.role === 'admin'),
     becomeVendor: () => {
-      const u = { ...read('stew.me'), isVendor: true, role: 'vendor' }
+      const u = sanitizeCachedUser({ ...read('stew.me'), isVendor: true, role: 'vendor' })
       write('stew.me', u)
       setUser(u)
       return u
     },
     saveProfile: async (patch) => {
-      const u = await api.updateMe(patch)
+      const u = sanitizeCachedUser(await api.updateMe(patch))
       write('stew.me', u)
       setUser(u)
       return u
     },
     logout: () => {
-      localStorage.removeItem('stew.token')
-      localStorage.removeItem('stew.me')
+      // Clear all STEW-prefixed storage keys to prevent stale data leakage
+      Object.keys(localStorage).filter((k) => k.startsWith('stew.')).forEach((k) => localStorage.removeItem(k))
       setUser(null)
     },
     deleteAccount: async () => {
-      try { await api.deleteAccount() } catch {}
-      localStorage.removeItem('stew.token')
-      localStorage.removeItem('stew.me')
-      localStorage.removeItem('stew.cart')
+      await api.deleteAccount()
+      Object.keys(localStorage).filter((k) => k.startsWith('stew.')).forEach((k) => localStorage.removeItem(k))
       setUser(null)
     },
   }), [user])

@@ -171,7 +171,13 @@ export function MealDetailModal({ meal, open, onClose, onAdd }) {
                     <div className="flex items-center justify-around rounded-2xl bg-sunken/80 px-4 py-3 text-xs font-bold text-ink-2">
                         <span className="flex items-center gap-1.5 text-ink">
                             <ThumbsUp className="h-3.5 w-3.5 text-brand-strong" />
-                            <span>{meal.rating || 4.8}</span>
+                            <span>
+                                {Number(meal.rating) > 0 &&
+                                (meal.reviews === undefined ||
+                                    Number(meal.reviews) > 0)
+                                    ? meal.rating
+                                    : "No ratings yet"}
+                            </span>
                         </span>
                         <span className="h-4 w-px bg-line" />
                         <span className="flex items-center gap-1">
@@ -315,10 +321,18 @@ export function MealCard({ meal, onAdd, onOpenDetail, className = "" }) {
                         <span className="truncate max-w-[85px] sm:max-w-[120px]">
                             {meal.vendorName}
                         </span>
-                        <span className="flex items-center gap-0.5 text-ink-2 font-bold shrink-0">
-                            <ThumbsUp className="h-3 w-3 text-brand-strong" />
-                            <span>{meal.rating || 4.8}</span>
-                        </span>
+                        {Number(meal.rating) > 0 &&
+                        (meal.reviews === undefined ||
+                            Number(meal.reviews) > 0) ? (
+                            <span className="flex items-center gap-0.5 text-ink-2 font-bold shrink-0">
+                                <ThumbsUp className="h-3 w-3 text-brand-strong" />
+                                <span>{meal.rating}</span>
+                            </span>
+                        ) : (
+                            <span className="text-[10px] font-medium text-ink-3 shrink-0">
+                                No ratings yet
+                            </span>
+                        )}
                     </div>
                 </div>
 
@@ -372,10 +386,17 @@ export function VendorCard({ vendor }) {
                         {vendor.hall}
                     </span>
                     <span className="mt-1 flex flex-wrap items-center gap-2">
-                        <span className="inline-flex items-center gap-1 text-xs font-extrabold text-brand-strong">
-                            <ThumbsUp className="h-3 w-3" />
-                            {vendor.rating}
-                        </span>
+                        {Number(vendor.reviews) > 0 &&
+                        Number(vendor.rating) > 0 ? (
+                            <span className="inline-flex items-center gap-1 text-xs font-extrabold text-brand-strong">
+                                <ThumbsUp className="h-3 w-3" />
+                                {vendor.rating}
+                            </span>
+                        ) : (
+                            <span className="text-xs font-semibold text-ink-3">
+                                No ratings yet
+                            </span>
+                        )}
                         <Badge tone={vendor.open ? "ok" : "mute"}>
                             {vendor.open ? "Cooking now" : "Closed"}
                         </Badge>

@@ -11,14 +11,22 @@ export function useScrollTop() {
 export function useAsync(fn, deps = []) {
   const [s, setS] = useState({ data: null, loading: true, error: null })
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  const run = useCallback(() => {
-    setS((x) => ({ ...x, loading: true, error: null }))
-    fn()
-      .then((data) => setS({ data, loading: false, error: null }))
-      .catch((error) => setS((x) => ({ ...x, loading: false, error })))
+  const run = useCallback((silent = false) => {
+    if (!silent) {
+      setS((x) => (x.data ? { ...x, error: null } : { ...x, loading: true, error: null }))
+    }
+    return fn()
+      .then((data) => {
+        setS({ data, loading: false, error: null })
+        return data
+      })
+      .catch((error) => {
+        setS((x) => ({ ...x, loading: false, error }))
+        throw error
+      })
   }, deps)
   useEffect(() => { run() }, [run])
-  return { ...s, retry: run }
+  return { ...s, retry: (silent = true) => run(silent) }
 }
 
 export function useOnline() {

@@ -32,11 +32,24 @@ export function Protected({ roles, children }) {
         return (
             <Navigate to="/app/login" state={{ from: loc.pathname }} replace />
         );
+    if (
+        roles?.includes("vendor") &&
+        satisfies(user, "vendor") &&
+        (!user.kitchenName || !user.vendorId) &&
+        loc.pathname !== "/app/vendor/apply"
+    ) {
+        return <Navigate to="/app/vendor/apply" replace />;
+    }
     if (roles && !roles.some((r) => satisfies(user, r))) {
         if (satisfies(user, "admin"))
             return <Navigate to="/app/admin" replace />;
         if (satisfies(user, "vendor"))
-            return <Navigate to="/app/vendor" replace />;
+            return (
+                <Navigate
+                    to={!user.kitchenName || !user.vendorId ? "/app/vendor/apply" : "/app/vendor"}
+                    replace
+                />
+            );
         return <Navigate to="/app" replace />;
     }
     return children;

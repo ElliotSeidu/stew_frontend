@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { Link, useNavigate } from 'react-router-dom'
-import { CalendarClock, Info, MapPin, ShieldCheck, ShoppingBag, Trash2 } from 'lucide-react'
+import { CalendarClock, Info, MapPin, ShieldCheck, ShoppingBag, Trash2, Wallet } from 'lucide-react'
 import { Button, Card, EmptyState, Field, Food, Input, Price, Qty, Select } from '../../components/ui'
-import { CAMPUS, PICKUP_SLOTS, SAFETY_POINTS, cookDays, feeFor } from '../../config'
-import { useAuth, useCart } from '../../context/Providers'
+import { CAMPUS, MOMO, PICKUP_SLOTS, SAFETY_POINTS, cookDays, feeFor } from '../../config'
+import { useAuth, useCart, useToast } from '../../context/Providers'
 import { api } from '../../lib/api'
 import { track } from '../../lib/analytics'
+import { payForOrder } from '../../lib/payments'
 import { money } from '../../lib/utils'
 
 /* Shared order maths. The 5% STEW fee is ADDED ON TOP of the menu price, so the
@@ -67,7 +68,7 @@ export function Cart() {
           <div className="text-sm">
             <p className="font-bold">You are coming from</p>
             <p className="text-ink-2">{user?.area || user?.hall}</p>
-            <p className="mt-1 text-xs text-ink-3">There is no delivery. You and the chef agree a meeting point after you order.</p>
+            <p className="mt-1 text-xs text-ink-3">There is no delivery. Message the chef on your order page to decide where to meet.</p>
           </div>
         </Card>
         <Summary subtotal={subtotal} />
@@ -80,8 +81,11 @@ export function Cart() {
 export function Checkout() {
   const { cart, subtotal, clear, vendorName } = useCart()
   const { user } = useAuth()
+  const toast = useToast()
   const nav = useNavigate()
   const [safetyOk, setSafetyOk] = useState(false)
+  const [pendingOrder, setPendingOrder] = useState(null)
+  const [payStage, setPayStage] = useState(null)
   const days = useMemo(() => cookDays(), [])
   const { register, handleSubmit, setError, formState: { errors, isSubmitting } } = useForm({
     mode: 'onTouched',
@@ -95,14 +99,14 @@ export function Checkout() {
     },
   })
   useEffect(() => { track('checkout_started') }, [])
-  if (!cart.lines.length) return <EmptyState icon={ShoppingBag} title="Nothing to check out" action={<Button to="/app/discover">Browse food</Button>} />
+  if (!cart.lines.length && !pendingOrder) return <EmptyState icon={ShoppingBag} title="Nothing to check out" action={<Button to="/app/discover">Browse food</Button>} />
 
   const fee = feeFor(subtotal)
-  const total = subtotal + fee
+  const total = pendingOrder ? pendingOrder.total : subtotal + fee
 
   const onSubmit = async (d) => {
     try {
-      const order = await api.createOrder({
+      const order = pendingOrder || await api.createOrder({
         vendorId: cart.vendorId,
         vendorName,
         email: user?.email,
@@ -116,11 +120,25 @@ export function Checkout() {
         orderNote: d.note,
         subtotal,
       })
+      if (!pendingOrder) {
+        setPendingOrder(order)
+        track('order_placed')
+      }
+      const res = await payForOrder(order, { onStatus: setPayStage })
+      if (res?.pending) {
+        clear()
+        return
+      }
       clear()
-      track('order_placed')
-      nav(`/app/orders/${order.id}/pay?new=1`, { replace: true })
+      toast('Payment received! STEW is holding your payment until you collect your meal.')
+      nav(`/app/orders/${order.id}?paid=1`, { replace: true })
     } catch (e) {
-      setError('root', { message: e.message })
+      setPayStage(null)
+      if (e.code === 'closed') {
+        setError('root', { message: 'Payment window was closed. Click the button below to complete your Paystack payment.' })
+      } else {
+        setError('root', { message: e.message })
+      }
     }
   }
 
@@ -154,7 +172,7 @@ export function Checkout() {
           <h2 className="font-bold">Where you are coming from</h2>
           <p className="rounded-lg bg-sunken p-3 text-xs text-ink-2">
             <Info className="mr-1 inline h-3.5 w-3.5" />
-            STEW has no delivery. The exact meeting point is agreed with the chef on the order page.
+            STEW has no delivery. Message the chef in the order chat to decide where to meet for pickup.
           </p>
           <Field label="Hall / area" error={errors.area}>
             <Select invalid={errors.area} {...register('area', { required: 'Choose your hall or area' })}>
@@ -175,17 +193,17 @@ export function Checkout() {
         <SafetyList />
 
         <Card className="space-y-3">
-          <h2 className="font-bold">Payment</h2>
+          <h2 className="flex items-center gap-2 font-bold"><Wallet className="h-4 w-4 text-brand-strong" />Pay on the spot with Paystack (Escrow)</h2>
           <p className="text-sm text-ink-2">
-            You will pay <Price v={total} className="text-ink" /> in the app on the next step, by Mobile Money through Paystack.
-            STEW holds that money and only pays your chef once you confirm you collected the food.
+            You will pay <Price v={total} className="text-ink" /> right now via Paystack ({MOMO.map((m) => m.label).join(', ')} or card).
+            STEW holds that money in escrow and only releases <Price v={subtotal} className="text-ink" /> to your chef once it is confirmed that you received the food.
             Nothing is paid in cash at the meetup, and you should never send Mobile Money to a chef directly.
           </p>
           <label className="flex items-start gap-2 text-sm text-ink-2">
             <input type="checkbox" className="mt-1 h-4 w-4 accent-brand" checked={safetyOk} onChange={(e) => setSafetyOk(e.target.checked)} />
             <span>I have read the meeting safety points above and I will meet in a public, well-lit place.</span>
           </label>
-          {!safetyOk && <p className="text-xs text-ink-3">Please confirm the safety points to continue.</p>}
+          {!safetyOk && <p className="text-xs text-ink-3">Please confirm the safety points to pay and place your order.</p>}
         </Card>
       </div>
 
@@ -199,7 +217,15 @@ export function Checkout() {
         </Card>
         <Summary subtotal={subtotal} />
         {errors.root && <p role="alert" className="rounded-lg bg-bad-soft p-3 text-sm font-medium text-bad">{errors.root.message}</p>}
-        <Button type="submit" size="lg" className="w-full" loading={isSubmitting} disabled={!safetyOk}>Continue to payment · {money(total)}</Button>
+        <Button type="submit" size="lg" className="w-full" loading={isSubmitting} disabled={!safetyOk}>
+          {payStage === 'verifying'
+            ? 'Confirming Paystack payment…'
+            : payStage === 'awaiting-approval'
+              ? 'Approve Paystack prompt…'
+              : payStage === 'contacting-paystack'
+                ? 'Starting Paystack…'
+                : `Pay now with Paystack · ${money(total)}`}
+        </Button>
         <Link to="/app/cart" className="block text-center text-sm font-semibold text-ink-2 underline">Back to tray</Link>
       </div>
     </form>

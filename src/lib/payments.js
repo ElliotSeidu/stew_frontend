@@ -74,47 +74,50 @@ export async function payForOrder(order, { onStatus } = {}) {
   const reference = init.reference || init.data?.reference
   if (!reference) throw new Error('The payment could not be started. Please try again.')
 
-  // Backend handed us a hosted page: send the student there and verify when they return.
+  // When running in mock mode or local dev without live Paystack keys, simulate Paystack inline approval on the spot
+  if (init.mock || (MOCK && !init.access_code && !init.data?.access_code)) {
+    say('awaiting-approval')
+    await new Promise((r) => setTimeout(r, 700))
+    say('verifying')
+    return api.verifyPayment({ orderId: order.id, reference })
+  }
+
+  const accessCode = init.access_code || init.data?.access_code
+  const key = init.publicKey || init.data?.public_key || PAYSTACK_PUBLIC_KEY
   const checkoutUrl = init.checkout_url || init.data?.authorization_url
+
+  // Prefer Paystack inline popup on the spot when public key is available
+  if (key && accessCode) {
+    say('awaiting-approval')
+    const Pop = await loadSdk()
+    await new Promise((resolve, reject) => {
+      const handler = Pop.setup({
+        key,
+        email: init.email || order.email || 'student@st.knust.edu.gh',
+        amount: init.amount,
+        currency: init.currency || 'GHS',
+        ref: reference,
+        access_code: accessCode,
+        channels: ['mobile_money', 'card'],
+        metadata: { orderId: order.id, vendor: order.vendorName },
+        callback: (res) => resolve(res),
+        onClose: () => reject(Object.assign(new Error('Payment window was closed before completing.'), { code: 'closed' })),
+      })
+      handler.openIframe()
+    })
+
+    say('verifying')
+    return api.verifyPayment({ orderId: order.id, reference })
+  }
+
+  // Fallback to Paystack hosted checkout URL if no inline public key is set
   if (checkoutUrl) {
     sessionStorage.setItem('stew.pendingPayment', JSON.stringify({ orderId: order.id, reference }))
     window.location.assign(checkoutUrl)
     return { pending: true, reference }
   }
 
-  // When running in mock mode or without a live secret/access_code, simulate the payment flow
-  if (init.mock || (MOCK && !init.access_code && !init.data?.access_code)) {
-    say('awaiting-approval')
-    await new Promise((r) => setTimeout(r, 800))
-    say('verifying')
-    return api.verifyPayment({ orderId: order.id, reference })
-  }
-
-  const accessCode = init.access_code || init.data?.access_code
-  if (!accessCode) throw new Error('The payment could not be started. Please try again.')
-
-  const key = init.publicKey || init.data?.public_key || PAYSTACK_PUBLIC_KEY
-  if (!key) throw new Error('Payments are not configured yet. Please contact support.')
-
-  say('awaiting-approval')
-  const Pop = await loadSdk()
-  await new Promise((resolve, reject) => {
-    const handler = Pop.setup({
-      key,
-      email: init.email || order.email || 'student@st.knust.edu.gh',
-      amount: init.amount,
-      currency: init.currency || 'GHS',
-      ref: reference,
-      channels: ['mobile_money', 'card'],
-      metadata: { orderId: order.id, vendor: order.vendorName },
-      callback: (res) => resolve(res),
-      onClose: () => reject(Object.assign(new Error('Payment was closed before it finished.'), { code: 'closed' })),
-    })
-    handler.openIframe()
-  })
-
-  say('verifying')
-  return api.verifyPayment({ orderId: order.id, reference })
+  throw new Error('Payments are not configured yet. Please contact support.')
 }
 
 // When the student comes back from a hosted Paystack page, finish the verification.

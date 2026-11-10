@@ -109,6 +109,10 @@ export function Button({
 }
 
 export function Field({ label, error, hint, children }) {
+    const errorText =
+        typeof error === "string"
+            ? error
+            : error?.message || (error ? "Please enter a valid value" : "");
     return (
         <label className="block">
             <span className="mb-1.5 block text-xs font-semibold text-ink-2">
@@ -118,12 +122,12 @@ export function Field({ label, error, hint, children }) {
             {hint && !error && (
                 <span className="mt-1 block text-xs text-ink-3">{hint}</span>
             )}
-            {error && (
+            {errorText && (
                 <span
                     role="alert"
                     className="mt-1 block text-xs font-medium text-bad"
                 >
-                    {error.message || error}
+                    {errorText}
                 </span>
             )}
         </label>
@@ -137,7 +141,7 @@ const st = (e) =>
     e ? "border-bad focus:border-bad" : "border-line/70 focus:border-brand";
 
 export const Input = forwardRef(
-    ({ invalid, className = "", type, ...p }, ref) => {
+    ({ invalid, className = "", type, onKeyDown, onInput, ...p }, ref) => {
         const [showPassword, setShowPassword] = useState(false);
 
         if (type === "password") {
@@ -147,6 +151,8 @@ export const Input = forwardRef(
                         ref={ref}
                         type={showPassword ? "text" : "password"}
                         aria-invalid={!!invalid}
+                        onKeyDown={onKeyDown}
+                        onInput={onInput}
                         className={cx(
                             base,
                             st(invalid),
@@ -175,11 +181,36 @@ export const Input = forwardRef(
             );
         }
 
+        const isNonNegativeNumber =
+            type === "number" && (p.min === undefined || Number(p.min) >= 0);
+
         return (
             <input
                 ref={ref}
                 type={type}
+                min={isNonNegativeNumber && p.min === undefined ? 0 : p.min}
                 aria-invalid={!!invalid}
+                onKeyDown={(e) => {
+                    if (
+                        isNonNegativeNumber &&
+                        ["-", "+", "e", "E"].includes(e.key)
+                    ) {
+                        e.preventDefault();
+                    }
+                    onKeyDown?.(e);
+                }}
+                onInput={(e) => {
+                    if (
+                        isNonNegativeNumber &&
+                        e.currentTarget.value !== "" &&
+                        Number(e.currentTarget.value) < 0
+                    ) {
+                        e.currentTarget.value = String(
+                            Math.max(0, Number(p.min) || 0)
+                        );
+                    }
+                    onInput?.(e);
+                }}
                 className={cx(base, st(invalid), "h-11", className)}
                 {...p}
             />
@@ -489,29 +520,44 @@ export function Switch({ checked, onChange, label }) {
 
 export function Modal({ open, onClose, title, children, footer }) {
     const ref = useRef(null);
+    const onCloseRef = useRef(onClose);
+    useEffect(() => {
+        onCloseRef.current = onClose;
+    }, [onClose]);
+
     useEffect(() => {
         if (!open) return;
         const prev = document.activeElement;
-        const onKey = (e) => e.key === "Escape" && onClose();
+        const onKey = (e) => e.key === "Escape" && onCloseRef.current?.();
         document.addEventListener("keydown", onKey);
         const prevBody = document.body.style.overflow;
         const prevHtml = document.documentElement.style.overflow;
         document.body.style.overflow = "hidden";
         document.documentElement.style.overflow = "hidden";
-        ref.current?.focus();
+        // Only focus container on initial open if an element inside it isn't already focused
+        if (!ref.current?.contains(document.activeElement)) {
+            ref.current?.focus();
+        }
         return () => {
             document.removeEventListener("keydown", onKey);
             document.body.style.overflow = prevBody;
             document.documentElement.style.overflow = prevHtml;
-            prev?.focus?.();
+            // Only restore focus to previous trigger element if still mounted
+            if (prev && typeof prev.focus === "function") {
+                try {
+                    prev.focus();
+                } catch {
+                    // Ignore focus errors on unmounted elements
+                }
+            }
         };
-    }, [open, onClose]);
+    }, [open]);
     if (!open) return null;
     return (
         <div
             className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-xs overscroll-contain sm:items-center sm:p-4"
             style={{ touchAction: "none" }}
-            onMouseDown={(e) => e.target === e.currentTarget && onClose()}
+            onMouseDown={(e) => e.target === e.currentTarget && onCloseRef.current?.()}
             onTouchMove={(e) => e.target === e.currentTarget && e.preventDefault()}
         >
             <div
