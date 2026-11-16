@@ -52,8 +52,13 @@ function Root() {
 
     if (standalone) {
         if (!user) return <Navigate to="/app/login" replace />;
-        if (user.isAdmin || user.role === "admin") return <Navigate to="/app/admin" replace />;
-        if (user.accountType === "vendor" || user.isVendor || user.role === "vendor") {
+        if (user.isAdmin || user.role === "admin")
+            return <Navigate to="/app/admin" replace />;
+        if (
+            user.accountType === "vendor" ||
+            user.isVendor ||
+            user.role === "vendor"
+        ) {
             return <Navigate to="/app/vendor" replace />;
         }
         return <Navigate to="/app" replace />;

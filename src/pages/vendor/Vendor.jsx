@@ -98,7 +98,9 @@ export function Apply() {
                 auth.updateUser(serverUser);
             } else if (auth.user) {
                 const nextAccountType =
-                    auth.user.accountType === "customer" ? "both" : auth.user.accountType || "vendor";
+                    auth.user.accountType === "customer"
+                        ? "both"
+                        : auth.user.accountType || "vendor";
                 auth.updateUser({
                     ...auth.user,
                     isVendor: true,
@@ -122,11 +124,16 @@ export function Apply() {
         }
     };
     return (
-        <form onSubmit={handleSubmit(onSubmit)} noValidate className="mx-auto max-w-lg space-y-5">
+        <form
+            onSubmit={handleSubmit(onSubmit)}
+            noValidate
+            className="mx-auto max-w-lg space-y-5"
+        >
             <div>
                 <h1 className="text-2xl font-extrabold">Set up your kitchen</h1>
                 <p className="mt-1 text-sm text-ink-2">
-                    Tell students about your kitchen, what you cook, and confirm our campus food-hygiene standards.
+                    Tell students about your kitchen, what you cook, and confirm
+                    our campus food-hygiene standards.
                 </p>
             </div>
             <Card className="space-y-4">
@@ -146,7 +153,10 @@ export function Apply() {
                     hint="A photo of your kitchen or your own logo. Without one we show your kitchen initials."
                 >
                     <div className="flex items-center gap-3">
-                        <KitchenLogo vendor={{ name: kitchenName, logo }} size="h-14 w-14" />
+                        <KitchenLogo
+                            vendor={{ name: kitchenName, logo }}
+                            size="h-14 w-14"
+                        />
                         <input
                             type="file"
                             accept="image/*"
@@ -172,8 +182,12 @@ export function Apply() {
                         defaultValue=""
                         {...register("hall", { required: "Choose a location" })}
                     >
-                        <option value="" disabled>Select…</option>
-                        {CAMPUS.areas.map((h) => <option key={h}>{h}</option>)}
+                        <option value="" disabled>
+                            Select…
+                        </option>
+                        {CAMPUS.areas.map((h) => (
+                            <option key={h}>{h}</option>
+                        ))}
                     </Select>
                 </Field>
                 <Field
@@ -186,7 +200,8 @@ export function Apply() {
                         placeholder="Palm nut soup, Groundnut soup, Fufu"
                         {...register("sells", {
                             required: "Tell us what you cook",
-                            validate: (v) => toList(v).length > 0 || "Add at least one dish",
+                            validate: (v) =>
+                                toList(v).length > 0 || "Add at least one dish",
                         })}
                     />
                 </Field>
@@ -199,7 +214,11 @@ export function Apply() {
                         invalid={errors.about}
                         {...register("about", {
                             required: "Tell us about your cooking",
-                            minLength: { value: 30, message: "Add a bit more detail (30+ characters)" },
+                            minLength: {
+                                value: 30,
+                                message:
+                                    "Add a bit more detail (30+ characters)",
+                            },
                         })}
                     />
                 </Field>
@@ -210,7 +229,10 @@ export function Apply() {
                         {...register("payout", {
                             required: "Enter a payout number",
                             setValueAs: (v) => v.replace(/\s/g, ""),
-                            pattern: { value: CAMPUS.phoneRe, message: "Enter a valid Ghana mobile number" },
+                            pattern: {
+                                value: CAMPUS.phoneRe,
+                                message: "Enter a valid Ghana mobile number",
+                            },
                         })}
                     />
                 </Field>
@@ -219,7 +241,9 @@ export function Apply() {
                         type="file"
                         accept="image/*,.pdf"
                         className={fileCls}
-                        {...register("idDoc", { required: "Upload your student ID" })}
+                        {...register("idDoc", {
+                            required: "Upload your student ID",
+                        })}
                     />
                 </Field>
             </Card>
@@ -232,14 +256,18 @@ export function Apply() {
                 <fieldset className="space-y-2">
                     <legend className="sr-only">Hygiene checklist</legend>
                     {HYGIENE.map((h, i) => (
-                        <label key={h} className="flex items-start gap-2 text-sm text-ink-2">
+                        <label
+                            key={h}
+                            className="flex items-start gap-2 text-sm text-ink-2"
+                        >
                             <input
                                 type="checkbox"
                                 value={i}
                                 className="mt-1 h-4 w-4 accent-brand"
                                 {...register("checklist", {
                                     validate: (v) =>
-                                        (v || []).length === HYGIENE.length || "Please confirm every item",
+                                        (v || []).length === HYGIENE.length ||
+                                        "Please confirm every item",
                                 })}
                             />
                             {h}
@@ -247,7 +275,9 @@ export function Apply() {
                     ))}
                 </fieldset>
                 {errors.checklist && (
-                    <p role="alert" className="text-xs font-medium text-bad">{errors.checklist.message}</p>
+                    <p role="alert" className="text-xs font-medium text-bad">
+                        {errors.checklist.message}
+                    </p>
                 )}
                 <Field
                     label="Photo of your cooking area"
@@ -258,7 +288,9 @@ export function Apply() {
                         type="file"
                         accept="image/*"
                         className={fileCls}
-                        {...register("kitchenPhoto", { required: "Upload a photo of your cooking area" })}
+                        {...register("kitchenPhoto", {
+                            required: "Upload a photo of your cooking area",
+                        })}
                     />
                 </Field>
                 <div>
@@ -266,28 +298,49 @@ export function Apply() {
                         <input
                             type="checkbox"
                             className="mt-1 h-4 w-4 accent-brand"
-                            {...register("hygiene", { required: "Please confirm" })}
+                            {...register("hygiene", {
+                                required: "Please confirm",
+                            })}
                         />
                         <span>
                             I agree to the{" "}
-                            <Link to="/app/legal/food-safety" className="font-semibold text-brand-strong underline">
+                            <Link
+                                to="/app/legal/food-safety"
+                                className="font-semibold text-brand-strong underline"
+                            >
                                 Food Safety Standards
                             </Link>{" "}
                             and{" "}
-                            <Link to="/app/legal/vendor-terms" className="font-semibold text-brand-strong underline">
+                            <Link
+                                to="/app/legal/vendor-terms"
+                                className="font-semibold text-brand-strong underline"
+                            >
                                 Vendor Terms
-                            </Link>.
+                            </Link>
+                            .
                         </span>
                     </label>
                     {errors.hygiene && (
-                        <p role="alert" className="mt-1 text-xs font-medium text-bad">{errors.hygiene.message}</p>
+                        <p
+                            role="alert"
+                            className="mt-1 text-xs font-medium text-bad"
+                        >
+                            {errors.hygiene.message}
+                        </p>
                     )}
                 </div>
             </Card>
             {errors.root && (
-                <p role="alert" className="rounded-lg bg-bad-soft p-3 text-sm font-medium text-bad">{errors.root.message}</p>
+                <p
+                    role="alert"
+                    className="rounded-lg bg-bad-soft p-3 text-sm font-medium text-bad"
+                >
+                    {errors.root.message}
+                </p>
             )}
-            <Button type="submit" className="w-full" loading={isSubmitting}>Open my kitchen</Button>
+            <Button type="submit" className="w-full" loading={isSubmitting}>
+                Open my kitchen
+            </Button>
         </form>
     );
 }
@@ -314,9 +367,7 @@ function normalizeVendorOrder(o) {
         paid: o.paid ?? (payStatus === "paid" || payStatus === "released"),
         items:
             o.items ||
-            (o.lines || [])
-                .map((l) => `${l.qty}× ${l.name}`)
-                .join(", "),
+            (o.lines || []).map((l) => `${l.qty}× ${l.name}`).join(", "),
         note: o.orderNote || o.note || "",
     };
 }
@@ -332,32 +383,56 @@ function StageBar({ order, onAdvance, busy }) {
                     const done = i < cur;
                     const active = i === cur;
                     return (
-                        <li key={s.id} className="flex items-center gap-2 text-sm">
+                        <li
+                            key={s.id}
+                            className="flex items-center gap-2 text-sm"
+                        >
                             <span
                                 className={
                                     "grid h-6 w-6 shrink-0 place-items-center rounded-full " +
-                                    (done ? "bg-ok text-on-solid" : active ? "bg-brand text-on-brand" : "bg-sunken text-ink-3")
+                                    (done
+                                        ? "bg-ok text-on-solid"
+                                        : active
+                                          ? "bg-brand text-on-brand"
+                                          : "bg-sunken text-ink-3")
                                 }
                             >
                                 <Icon className="h-3.5 w-3.5" />
                             </span>
-                            <span className={done || active ? "font-semibold" : "text-ink-3"}>{s.label}</span>
+                            <span
+                                className={
+                                    done || active
+                                        ? "font-semibold"
+                                        : "text-ink-3"
+                                }
+                            >
+                                {s.label}
+                            </span>
                             {order.prepAt?.[s.id] && (
-                                <span className="ml-auto text-[11px] text-ink-3">{timeAgo(order.prepAt[s.id])}</span>
+                                <span className="ml-auto text-[11px] text-ink-3">
+                                    {timeAgo(order.prepAt[s.id])}
+                                </span>
                             )}
                         </li>
                     );
                 })}
             </ol>
             {next && next.id !== "collected" ? (
-                <Button size="sm" loading={busy} onClick={() => onAdvance(next.id)}>
+                <Button
+                    size="sm"
+                    loading={busy}
+                    onClick={() => onAdvance(next.id)}
+                >
                     Mark: {next.label}
                 </Button>
             ) : order.prepStage === "collected" ? (
-                <p className="text-xs font-semibold text-ok">Collected. Nothing left to do.</p>
+                <p className="text-xs font-semibold text-ok">
+                    Collected. Nothing left to do.
+                </p>
             ) : (
                 <p className="text-xs font-semibold text-brand-strong">
-                    Ready for pickup — enter the student&apos;s 6-digit handover code below to complete.
+                    Ready for pickup — enter the student&apos;s 6-digit handover
+                    code below to complete.
                 </p>
             )}
         </div>
@@ -399,32 +474,43 @@ function OrderThread({ order, from, onSent }) {
             <div>
                 <p className="flex items-center gap-2 text-sm font-semibold">
                     <MessageSquare className="h-4 w-4 text-brand-strong" />
-                    Messages with {from === "vendor" ? order.customer : "the kitchen"}
+                    Messages with{" "}
+                    {from === "vendor" ? order.customer : "the kitchen"}
                 </p>
                 <p className="text-xs text-ink-3">
-                    Chat here to agree on a safe, public place and time to meet for pickup.
+                    Chat here to agree on a safe, public place and time to meet
+                    for pickup.
                 </p>
             </div>
             {messages.length ? (
-                <ul ref={listRef} className="max-h-56 space-y-2 overflow-y-auto rounded-xl bg-sunken p-3">
+                <ul
+                    ref={listRef}
+                    className="max-h-56 space-y-2 overflow-y-auto rounded-xl bg-sunken p-3"
+                >
                     {messages.map((m, i) => (
                         <li
                             key={i}
                             className={
                                 "max-w-[85%] rounded-xl px-3 py-2 text-sm " +
-                                (m.from === from ? "ml-auto bg-brand text-on-brand" : "bg-surface text-ink")
+                                (m.from === from
+                                    ? "ml-auto bg-brand text-on-brand"
+                                    : "bg-surface text-ink")
                             }
                         >
                             <span className="block">{m.text}</span>
                             <span className="mt-0.5 block text-[10px] opacity-70">
-                                {m.from === from ? "You" : order.customer || "Student"} · {timeAgo(m.at)}
+                                {m.from === from
+                                    ? "You"
+                                    : order.customer || "Student"}{" "}
+                                · {timeAgo(m.at)}
                             </span>
                         </li>
                     ))}
                 </ul>
             ) : (
                 <p className="text-xs text-ink-3">
-                    No messages yet. Message {order.customer || "the student"} to decide where to meet.
+                    No messages yet. Message {order.customer || "the student"}{" "}
+                    to decide where to meet.
                 </p>
             )}
             <form onSubmit={send} className="flex gap-2">
@@ -435,7 +521,14 @@ function OrderThread({ order, from, onSent }) {
                     placeholder="e.g. Let's meet at Commercial Area pharmacy at 5pm"
                     aria-label="Message"
                 />
-                <Button type="submit" size="sm" loading={busy} disabled={!text.trim()}>Send</Button>
+                <Button
+                    type="submit"
+                    size="sm"
+                    loading={busy}
+                    disabled={!text.trim()}
+                >
+                    Send
+                </Button>
             </form>
         </div>
     );
@@ -468,10 +561,14 @@ function HandoffCodeForm({ order, onVerified }) {
     if ((order.stage || "accepted") === "collected") return null;
 
     return (
-        <form onSubmit={verify} className="space-y-2 rounded-xl border border-line bg-surface p-3">
+        <form
+            onSubmit={verify}
+            className="space-y-2 rounded-xl border border-line bg-surface p-3"
+        >
             <p className="text-xs font-bold text-ink">Handover Verification</p>
             <p className="text-xs text-ink-3">
-                Enter the student&apos;s 6-digit pickup code to verify handoff and release escrow payment.
+                Enter the student&apos;s 6-digit pickup code to verify handoff
+                and release escrow payment.
             </p>
             <div className="flex gap-2">
                 <Input
@@ -481,7 +578,12 @@ function HandoffCodeForm({ order, onVerified }) {
                     maxLength={6}
                     className="text-center font-mono font-bold tracking-widest"
                 />
-                <Button type="submit" size="sm" loading={busy} disabled={code.length !== 6}>
+                <Button
+                    type="submit"
+                    size="sm"
+                    loading={busy}
+                    disabled={code.length !== 6}
+                >
                     Verify code
                 </Button>
             </div>
@@ -522,11 +624,18 @@ export function VDashboard() {
                         if (curMsgs > prevMsgs) {
                             const lastMsg = o.messages[curMsgs - 1];
                             if (lastMsg?.from !== "vendor") {
-                                toast(`New message from ${o.customer} (${o.code})`);
+                                toast(
+                                    `New message from ${o.customer} (${o.code})`
+                                );
                             }
                         }
-                        if (prev.stage !== "collected" && o.stage === "collected") {
-                            toast(`Order ${o.code} collected! Payment released to you.`);
+                        if (
+                            prev.stage !== "collected" &&
+                            o.stage === "collected"
+                        ) {
+                            toast(
+                                `Order ${o.code} collected! Payment released to you.`
+                            );
                         }
                     }
                 });
@@ -535,7 +644,8 @@ export function VDashboard() {
 
             // Keep queue stable if items haven't changed to prevent needless re-renders
             setQueue((prevQueue) => {
-                if (prevQueue.length !== activeOrders.length) return activeOrders;
+                if (prevQueue.length !== activeOrders.length)
+                    return activeOrders;
                 const changed = activeOrders.some((o, i) => {
                     const p = prevQueue[i];
                     return (
@@ -543,8 +653,10 @@ export function VDashboard() {
                         p.id !== o.id ||
                         p.stage !== o.stage ||
                         p.paid !== o.paid ||
-                        (p.messages?.length || 0) !== (o.messages?.length || 0) ||
-                        p.messages?.[p.messages.length - 1]?.text !== o.messages?.[o.messages.length - 1]?.text
+                        (p.messages?.length || 0) !==
+                            (o.messages?.length || 0) ||
+                        p.messages?.[p.messages.length - 1]?.text !==
+                            o.messages?.[o.messages.length - 1]?.text
                     );
                 });
                 return changed ? activeOrders : prevQueue;
@@ -556,9 +668,13 @@ export function VDashboard() {
                 const updated = activeOrders.find((x) => x.id === prev.id);
                 if (!updated) return prev;
                 const msgsChanged =
-                    (prev.messages?.length || 0) !== (updated.messages?.length || 0) ||
-                    prev.messages?.[prev.messages.length - 1]?.text !== updated.messages?.[updated.messages.length - 1]?.text;
-                const stageChanged = prev.stage !== updated.stage || prev.prepStage !== updated.prepStage;
+                    (prev.messages?.length || 0) !==
+                        (updated.messages?.length || 0) ||
+                    prev.messages?.[prev.messages.length - 1]?.text !==
+                        updated.messages?.[updated.messages.length - 1]?.text;
+                const stageChanged =
+                    prev.stage !== updated.stage ||
+                    prev.prepStage !== updated.prepStage;
                 const paidChanged = prev.paid !== updated.paid;
                 if (msgsChanged || stageChanged || paidChanged) {
                     return updated;
@@ -591,7 +707,11 @@ export function VDashboard() {
         setOpen(nextOpen);
         try {
             await auth.saveProfile({ open: nextOpen });
-            toast(nextOpen ? "Kitchen is open for orders" : "Kitchen closed for new orders");
+            toast(
+                nextOpen
+                    ? "Kitchen is open for orders"
+                    : "Kitchen closed for new orders"
+            );
         } catch (err) {
             setOpen(!nextOpen);
             toast(err.message, "bad");
@@ -599,7 +719,12 @@ export function VDashboard() {
     };
 
     const decline = async (order) => {
-        if (!window.confirm(`Decline and cancel order ${order.code}? Any paid funds will be refunded.`)) return;
+        if (
+            !window.confirm(
+                `Decline and cancel order ${order.code}? Any paid funds will be refunded.`
+            )
+        )
+            return;
         try {
             await api.cancelOrder(order.id);
             setQueue((q) => q.filter((x) => x.id !== order.id));
@@ -616,8 +741,12 @@ export function VDashboard() {
             const res = await api.setPrepStage(order.id, stage);
             const norm = normalizeVendorOrder(res);
             setQueue((q) => q.map((o) => (o.id === order.id ? norm : o)));
-            setOpenOrder((prev) => (prev && prev.id === order.id ? norm : prev));
-            toast(`${order.code} → ${PREP_STAGES.find((s) => s.id === stage)?.label}`);
+            setOpenOrder((prev) =>
+                prev && prev.id === order.id ? norm : prev
+            );
+            toast(
+                `${order.code} → ${PREP_STAGES.find((s) => s.id === stage)?.label}`
+            );
         } catch (err) {
             toast(err.message, "bad");
         } finally {
@@ -626,9 +755,14 @@ export function VDashboard() {
     };
 
     const list = useMemo(() => {
-        const withStage = queue.map((o) => ({ prepStage: o.stage || "accepted", ...o }));
-        if (filter === "active") return withStage.filter((o) => o.prepStage !== "collected");
-        if (filter === "ready") return withStage.filter((o) => o.prepStage === "ready");
+        const withStage = queue.map((o) => ({
+            prepStage: o.stage || "accepted",
+            ...o,
+        }));
+        if (filter === "active")
+            return withStage.filter((o) => o.prepStage !== "collected");
+        if (filter === "ready")
+            return withStage.filter((o) => o.prepStage === "ready");
         return withStage;
     }, [queue, filter]);
 
@@ -639,7 +773,9 @@ export function VDashboard() {
             .reduce((sum, o) => sum + (Number(o.subtotal ?? o.total) || 0), 0);
     }, [queue]);
 
-    const newCount = queue.filter((o) => (o.stage || "accepted") === "accepted").length;
+    const newCount = queue.filter(
+        (o) => (o.stage || "accepted") === "accepted"
+    ).length;
     const readyCount = queue.filter((o) => o.stage === "ready").length;
 
     return (
@@ -650,33 +786,55 @@ export function VDashboard() {
                         {auth.user?.kitchenName || "Your kitchen"}
                     </h1>
                     <p className="mt-1 text-sm text-ink-2">
-                        {newCount > 0 ? `${newCount} new order${newCount > 1 ? "s" : ""} to accept.` : "You are up to date."}
-                        {readyCount > 0 ? ` ${readyCount} waiting for pickup.` : ""}
+                        {newCount > 0
+                            ? `${newCount} new order${newCount > 1 ? "s" : ""} to accept.`
+                            : "You are up to date."}
+                        {readyCount > 0
+                            ? ` ${readyCount} waiting for pickup.`
+                            : ""}
                     </p>
                     {sells.length > 0 && (
-                        <p className="mt-1 text-xs text-ink-3">You cook: {sells.join(" · ")}</p>
+                        <p className="mt-1 text-xs text-ink-3">
+                            You cook: {sells.join(" · ")}
+                        </p>
                     )}
                 </div>
                 <div className="flex items-center gap-3">
                     {auth.user?.accountType !== "vendor" && (
-                        <Button to="/app" variant="outline" size="sm">Order food</Button>
+                        <Button to="/app" variant="outline" size="sm">
+                            Order food
+                        </Button>
                     )}
                     <label className="flex items-center gap-3 text-sm font-semibold">
                         {open ? "Open for orders" : "Closed"}
-                        <Switch checked={open} onChange={toggleOpen} label="Kitchen open" />
+                        <Switch
+                            checked={open}
+                            onChange={toggleOpen}
+                            label="Kitchen open"
+                        />
                     </label>
                 </div>
             </div>
 
             <div className="grid grid-cols-3 gap-2 sm:gap-3">
                 {[
-                    ["In the pot", queue.filter((o) => o.stage !== "collected").length],
+                    [
+                        "In the pot",
+                        queue.filter((o) => o.stage !== "collected").length,
+                    ],
                     ["Ready for pickup", readyCount],
                     ["This week", money(weekTotal)],
                 ].map(([l, v]) => (
-                    <Card key={l} className="!p-2.5 sm:!p-4 overflow-hidden flex flex-col justify-between">
-                        <p className="text-[11px] sm:text-xs font-semibold text-ink-3 truncate leading-tight">{l}</p>
-                        <p className="num mt-1 text-xs xs:text-sm sm:text-lg md:text-xl font-black text-ink truncate whitespace-nowrap">{v}</p>
+                    <Card
+                        key={l}
+                        className="!p-2.5 sm:!p-4 overflow-hidden flex flex-col justify-between"
+                    >
+                        <p className="text-[11px] sm:text-xs font-semibold text-ink-3 truncate leading-tight">
+                            {l}
+                        </p>
+                        <p className="num mt-1 text-xs xs:text-sm sm:text-lg md:text-xl font-black text-ink truncate whitespace-nowrap">
+                            {v}
+                        </p>
                     </Card>
                 ))}
             </div>
@@ -699,29 +857,44 @@ export function VDashboard() {
             </div>
 
             {loading ? (
-                <Card className="p-6 text-sm text-ink-3">Loading your kitchen orders…</Card>
+                <Card className="p-6 text-sm text-ink-3">
+                    Loading your kitchen orders…
+                </Card>
             ) : list.length ? (
                 <ul className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {list.map((o) => {
                         const stage = o.stage || "accepted";
                         const stageMeta = PREP_STAGES[stageIndex(stage)];
                         return (
-                            <li key={o.id} className="flex flex-col justify-between rounded-3xl border border-line/70 bg-surface p-5 shadow-xs transition hover:shadow-md">
+                            <li
+                                key={o.id}
+                                className="flex flex-col justify-between rounded-3xl border border-line/70 bg-surface p-5 shadow-xs transition hover:shadow-md"
+                            >
                                 <div className="flex flex-wrap items-start justify-between gap-2">
                                     <div>
-                                        <p className="num font-bold">{o.code}</p>
+                                        <p className="num font-bold">
+                                            {o.code}
+                                        </p>
                                         <p className="text-sm text-ink-2">
                                             {o.customer}
                                             {o.phone && (
-                                                <a href={`tel:${o.phone}`} className="ml-2 inline-flex items-center gap-1 font-semibold text-brand-strong">
-                                                    <Phone className="h-3 w-3" />{o.phone}
+                                                <a
+                                                    href={`tel:${o.phone}`}
+                                                    className="ml-2 inline-flex items-center gap-1 font-semibold text-brand-strong"
+                                                >
+                                                    <Phone className="h-3 w-3" />
+                                                    {o.phone}
                                                 </a>
                                             )}
                                         </p>
                                     </div>
                                     <div className="flex flex-wrap items-center gap-1.5">
-                                        {o.paid && <Badge tone="ok">Paid</Badge>}
-                                        <Badge tone={stageMeta.tone}>{stageMeta.label}</Badge>
+                                        {o.paid && (
+                                            <Badge tone="ok">Paid</Badge>
+                                        )}
+                                        <Badge tone={stageMeta.tone}>
+                                            {stageMeta.label}
+                                        </Badge>
                                     </div>
                                 </div>
 
@@ -732,12 +905,16 @@ export function VDashboard() {
                                     </p>
                                 )}
                                 <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-ink-2">
-                                    <span className="num">{money(o.total)}</span>
-                                    <span className="inline-flex items-center gap-1">
-                                        <MapPin className="h-3.5 w-3.5" />{o.area}
+                                    <span className="num">
+                                        {money(o.total)}
                                     </span>
                                     <span className="inline-flex items-center gap-1">
-                                        <Clock className="h-3.5 w-3.5" />Pickup {niceDay(o.pickupDay)}
+                                        <MapPin className="h-3.5 w-3.5" />
+                                        {o.area}
+                                    </span>
+                                    <span className="inline-flex items-center gap-1">
+                                        <Clock className="h-3.5 w-3.5" />
+                                        Pickup {niceDay(o.pickupDay)}
                                     </span>
                                 </p>
 
@@ -750,11 +927,17 @@ export function VDashboard() {
                                         <MessageSquare className="h-3.5 w-3.5 shrink-0 text-brand-strong" />
                                         <span className="truncate">
                                             <strong className="font-semibold text-ink">
-                                                {o.messages[o.messages.length - 1].from === "vendor"
+                                                {o.messages[
+                                                    o.messages.length - 1
+                                                ].from === "vendor"
                                                     ? "You: "
                                                     : `${o.customer}: `}
                                             </strong>
-                                            {o.messages[o.messages.length - 1].text}
+                                            {
+                                                o.messages[
+                                                    o.messages.length - 1
+                                                ].text
+                                            }
                                         </span>
                                     </button>
                                 )}
@@ -763,18 +946,28 @@ export function VDashboard() {
                                     {o.messages?.length > 0 && (
                                         <Badge tone="brand">
                                             <MessageSquare className="h-3 w-3" />
-                                            {o.messages.length} message{o.messages.length > 1 ? "s" : ""}
+                                            {o.messages.length} message
+                                            {o.messages.length > 1 ? "s" : ""}
                                         </Badge>
                                     )}
                                     {o.paid && stage !== "collected" && (
                                         <Badge tone="warn">
                                             <Wallet className="h-3 w-3" />
-                                            STEW is holding {money(o.subtotal ?? o.total)}
+                                            STEW is holding{" "}
+                                            {money(o.subtotal ?? o.total)}
                                         </Badge>
                                     )}
-                                    {stage === "collected" && <Badge tone="ok">Released to you</Badge>}
-                                    <Button size="sm" variant="outline" onClick={() => setOpenOrder(o)}>
-                                        {stage === "ready" ? "Enter pickup code / Open" : "Open order"}
+                                    {stage === "collected" && (
+                                        <Badge tone="ok">Released to you</Badge>
+                                    )}
+                                    <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => setOpenOrder(o)}
+                                    >
+                                        {stage === "ready"
+                                            ? "Enter pickup code / Open"
+                                            : "Open order"}
                                     </Button>
                                 </div>
                                 {o.paid && stage !== "collected" && (
@@ -783,10 +976,25 @@ export function VDashboard() {
                                             order={o}
                                             onVerified={(updated) => {
                                                 const norm = updated
-                                                    ? normalizeVendorOrder(updated)
-                                                    : { ...o, stage: "collected", prepStage: "collected" };
-                                                setQueue((q) => q.map((x) => (x.id === o.id ? norm : x)));
-                                                setOpenOrder((prev) => (prev && prev.id === o.id ? norm : prev));
+                                                    ? normalizeVendorOrder(
+                                                          updated
+                                                      )
+                                                    : {
+                                                          ...o,
+                                                          stage: "collected",
+                                                          prepStage:
+                                                              "collected",
+                                                      };
+                                                setQueue((q) =>
+                                                    q.map((x) =>
+                                                        x.id === o.id ? norm : x
+                                                    )
+                                                );
+                                                setOpenOrder((prev) =>
+                                                    prev && prev.id === o.id
+                                                        ? norm
+                                                        : prev
+                                                );
                                             }}
                                         />
                                     </div>
@@ -798,7 +1006,11 @@ export function VDashboard() {
             ) : (
                 <EmptyState
                     icon={ChefHat}
-                    title={filter === "ready" ? "Nothing waiting for pickup" : "No orders in your pot yet"}
+                    title={
+                        filter === "ready"
+                            ? "Nothing waiting for pickup"
+                            : "No orders in your pot yet"
+                    }
                     text="When students place orders from your menu, they will appear here automatically."
                 />
             )}
@@ -814,46 +1026,91 @@ export function VDashboard() {
                             <p className="font-bold">{openOrder.customer}</p>
                             <p className="text-ink-2">{openOrder.items}</p>
                             <p className="mt-1 text-xs text-ink-3">
-                                {openOrder.area} · pickup {niceDay(openOrder.pickupDay)} · <span className="num">{money(openOrder.total)}</span>
+                                {openOrder.area} · pickup{" "}
+                                {niceDay(openOrder.pickupDay)} ·{" "}
+                                <span className="num">
+                                    {money(openOrder.total)}
+                                </span>
                             </p>
-                            {openOrder.note && <p className="mt-2 text-xs text-warn">Note: {openOrder.note}</p>}
+                            {openOrder.note && (
+                                <p className="mt-2 text-xs text-warn">
+                                    Note: {openOrder.note}
+                                </p>
+                            )}
                         </div>
                         <StageBar
-                            order={{ prepStage: openOrder.stage || "accepted", prepAt: openOrder.prepAt }}
+                            order={{
+                                prepStage: openOrder.stage || "accepted",
+                                prepAt: openOrder.prepAt,
+                            }}
                             busy={busyId === openOrder.id}
                             onAdvance={(stage) => advance(openOrder, stage)}
                         />
-                        {openOrder.paid && (openOrder.stage || "accepted") !== "collected" && (
-                            <div className="space-y-2 rounded-xl bg-warn-soft p-3">
-                                <p className="text-sm font-semibold text-warn">
-                                    <Wallet className="mr-1 inline h-4 w-4" />
-                                    STEW is holding {money(openOrder.subtotal ?? openOrder.total)} for this order.
-                                </p>
-                                <p className="text-xs text-warn">
-                                    {(openOrder.stage || "accepted") === "ready"
-                                        ? "Your food is ready — once the student confirms they collected it, your money is released."
-                                        : "Money is released once the student confirms collection, after you mark the order ready."}
-                                </p>
-                                {(openOrder.stage === "ready" || openOrder.collectionNudgedAt) && (
-                                    <Button
-                                        size="sm"
-                                        variant="outline"
-                                        onClick={async () => {
-                                            await api.nudgeCollection(openOrder.id).catch(() => {});
-                                            setQueue((q) => q.map((x) => (x.id === openOrder.id ? { ...x, collectionNudgedAt: Date.now() } : x)));
-                                            toast("Reminder sent to the student");
-                                        }}
-                                    >
-                                        Remind the student to confirm
-                                    </Button>
-                                )}
-                            </div>
-                        )}
+                        {openOrder.paid &&
+                            (openOrder.stage || "accepted") !== "collected" && (
+                                <div className="space-y-2 rounded-xl bg-warn-soft p-3">
+                                    <p className="text-sm font-semibold text-warn">
+                                        <Wallet className="mr-1 inline h-4 w-4" />
+                                        STEW is holding{" "}
+                                        {money(
+                                            openOrder.subtotal ??
+                                                openOrder.total
+                                        )}{" "}
+                                        for this order.
+                                    </p>
+                                    <p className="text-xs text-warn">
+                                        {(openOrder.stage || "accepted") ===
+                                        "ready"
+                                            ? "Your food is ready — once the student confirms they collected it, your money is released."
+                                            : "Money is released once the student confirms collection, after you mark the order ready."}
+                                    </p>
+                                    {(openOrder.stage === "ready" ||
+                                        openOrder.collectionNudgedAt) && (
+                                        <Button
+                                            size="sm"
+                                            variant="outline"
+                                            onClick={async () => {
+                                                await api
+                                                    .nudgeCollection(
+                                                        openOrder.id
+                                                    )
+                                                    .catch(() => {});
+                                                setQueue((q) =>
+                                                    q.map((x) =>
+                                                        x.id === openOrder.id
+                                                            ? {
+                                                                  ...x,
+                                                                  collectionNudgedAt:
+                                                                      Date.now(),
+                                                              }
+                                                            : x
+                                                    )
+                                                );
+                                                toast(
+                                                    "Reminder sent to the student"
+                                                );
+                                            }}
+                                        >
+                                            Remind the student to confirm
+                                        </Button>
+                                    )}
+                                </div>
+                            )}
                         <HandoffCodeForm
                             order={openOrder}
                             onVerified={(updated) => {
-                                const norm = updated ? normalizeVendorOrder(updated) : { ...openOrder, stage: "collected", prepStage: "collected" };
-                                setQueue((q) => q.map((x) => (x.id === openOrder.id ? norm : x)));
+                                const norm = updated
+                                    ? normalizeVendorOrder(updated)
+                                    : {
+                                          ...openOrder,
+                                          stage: "collected",
+                                          prepStage: "collected",
+                                      };
+                                setQueue((q) =>
+                                    q.map((x) =>
+                                        x.id === openOrder.id ? norm : x
+                                    )
+                                );
                                 setOpenOrder(norm);
                             }}
                         />
@@ -863,14 +1120,23 @@ export function VDashboard() {
                             onSent={(updated) => {
                                 if (updated) {
                                     const norm = normalizeVendorOrder(updated);
-                                    setQueue((q) => q.map((x) => (x.id === openOrder.id ? norm : x)));
+                                    setQueue((q) =>
+                                        q.map((x) =>
+                                            x.id === openOrder.id ? norm : x
+                                        )
+                                    );
                                     setOpenOrder(norm);
                                 }
                             }}
                         />
                         {(openOrder.stage || "accepted") !== "collected" && (
                             <div className="pt-2 border-t border-line flex justify-end">
-                                <Button size="sm" variant="outline" className="text-bad hover:bg-bad-soft" onClick={() => decline(openOrder)}>
+                                <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="text-bad hover:bg-bad-soft"
+                                    onClick={() => decline(openOrder)}
+                                >
                                     Decline & refund order
                                 </Button>
                             </div>
@@ -927,21 +1193,45 @@ function ItemForm({ onSave, item, submitting }) {
             >
                 <div className="space-y-2">
                     {image ? (
-                        <Food meal={{ name: "Dish preview", image }} frame="aspect-[16/10]" className="rounded-xl" />
+                        <Food
+                            meal={{ name: "Dish preview", image }}
+                            frame="aspect-[16/10]"
+                            className="rounded-xl"
+                        />
                     ) : (
                         <div className="grid aspect-[16/10] w-full place-items-center rounded-xl border border-dashed border-line bg-sunken text-center text-xs text-ink-3">
                             No photo yet — students see a placeholder
                         </div>
                     )}
-                    <input type="file" accept="image/*" className={fileCls} onChange={pickImage} disabled={busy} />
-                    {busy && <p className="text-xs text-ink-3">Preparing the photo…</p>}
+                    <input
+                        type="file"
+                        accept="image/*"
+                        className={fileCls}
+                        onChange={pickImage}
+                        disabled={busy}
+                    />
+                    {busy && (
+                        <p className="text-xs text-ink-3">
+                            Preparing the photo…
+                        </p>
+                    )}
                     {image && (
-                        <Button size="sm" variant="outline" onClick={() => setImage(null)}>Remove photo</Button>
+                        <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => setImage(null)}
+                        >
+                            Remove photo
+                        </Button>
                     )}
                 </div>
             </Field>
             <Field label="Dish name" error={errors.name}>
-                <Input invalid={errors.name} placeholder="e.g. Palm nut soup (abenkwan)" {...register("name", { required: "Enter a name" })} />
+                <Input
+                    invalid={errors.name}
+                    placeholder="e.g. Palm nut soup (abenkwan)"
+                    {...register("name", { required: "Enter a name" })}
+                />
             </Field>
             <div className="grid grid-cols-2 gap-3">
                 <Field label="Price per portion (GH¢)" error={errors.price}>
@@ -981,7 +1271,9 @@ function ItemForm({ onSave, item, submitting }) {
             </div>
             <Field label="Kind of dish">
                 <Select {...register("cat")}>
-                    {CATEGORIES.map((c) => <option key={c}>{c}</option>)}
+                    {CATEGORIES.map((c) => (
+                        <option key={c}>{c}</option>
+                    ))}
                 </Select>
             </Field>
             <Field label="Description" error={errors.desc}>
@@ -990,14 +1282,27 @@ function ItemForm({ onSave, item, submitting }) {
                     placeholder="What is in the pot, how peppery it is, what it goes with."
                     {...register("desc", {
                         required: "Add a short description",
-                        minLength: { value: 10, message: "A bit more detail please" },
+                        minLength: {
+                            value: 10,
+                            message: "A bit more detail please",
+                        },
                     })}
                 />
             </Field>
             {errors.root && (
-                <p role="alert" className="rounded-lg bg-bad-soft p-3 text-sm font-medium text-bad">{errors.root.message}</p>
+                <p
+                    role="alert"
+                    className="rounded-lg bg-bad-soft p-3 text-sm font-medium text-bad"
+                >
+                    {errors.root.message}
+                </p>
             )}
-            <Button type="submit" className="w-full" loading={submitting} disabled={busy}>
+            <Button
+                type="submit"
+                className="w-full"
+                loading={submitting}
+                disabled={busy}
+            >
                 {editing ? "Save changes" : "Add dish"}
             </Button>
         </form>
@@ -1035,9 +1340,13 @@ export function VMenu() {
 
     // Merge saved DB dishes with any dish names the vendor typed during setup that haven't been published yet
     const items = useMemo(() => {
-        const existingNames = new Set(dbItems.map((m) => (m.name || "").trim().toLowerCase()));
+        const existingNames = new Set(
+            dbItems.map((m) => (m.name || "").trim().toLowerCase())
+        );
         const drafts = (auth.user?.sells || [])
-            .filter((name) => name && !existingNames.has(name.trim().toLowerCase()))
+            .filter(
+                (name) => name && !existingNames.has(name.trim().toLowerCase())
+            )
             .map((name, i) => ({
                 id: `draft-${i}`,
                 name,
@@ -1101,7 +1410,9 @@ export function VMenu() {
                     desc: d.desc,
                     image: d.image || "",
                 });
-                setDbItems((prev) => prev.map((x) => (x.id === editing.id ? updated : x)));
+                setDbItems((prev) =>
+                    prev.map((x) => (x.id === editing.id ? updated : x))
+                );
                 toast("Dish updated");
             }
             setEditing(null);
@@ -1119,7 +1430,9 @@ export function VMenu() {
         }
         try {
             const updated = await api.updateMeal(m.id, { on: v });
-            setDbItems((prev) => prev.map((x) => (x.id === m.id ? updated : x)));
+            setDbItems((prev) =>
+                prev.map((x) => (x.id === m.id ? updated : x))
+            );
         } catch (err) {
             toast(err.message, "bad");
         }
@@ -1155,13 +1468,22 @@ export function VMenu() {
             </div>
 
             {loading ? (
-                <Card className="p-6 text-sm text-ink-3">Loading your menu…</Card>
+                <Card className="p-6 text-sm text-ink-3">
+                    Loading your menu…
+                </Card>
             ) : items.length ? (
                 <ul className="divide-y divide-line rounded-2xl border border-line bg-surface">
                     {items.map((m) => (
-                        <li key={m.id} className="flex flex-wrap items-center gap-3 p-4">
+                        <li
+                            key={m.id}
+                            className="flex flex-wrap items-center gap-3 p-4"
+                        >
                             {m.image ? (
-                                <Food meal={m} frame="aspect-[4/3]" className="w-20 shrink-0 rounded-xl" />
+                                <Food
+                                    meal={m}
+                                    frame="aspect-[4/3]"
+                                    className="w-20 shrink-0 rounded-xl"
+                                />
                             ) : (
                                 <button
                                     type="button"
@@ -1181,16 +1503,24 @@ export function VMenu() {
                             <div className="min-w-0 flex-1">
                                 <p className="truncate font-bold">{m.name}</p>
                                 <p className="text-xs text-ink-3">
-                                    <Price v={m.price} /> · {m.left} portion{m.left === 1 ? "" : "s"} available
+                                    <Price v={m.price} /> · {m.left} portion
+                                    {m.left === 1 ? "" : "s"} available
                                 </p>
                                 {m.needsDetails && (
                                     <p className="mt-1 text-[11px] font-semibold text-warn">
-                                        Finish this dish: add price, description and photo to publish
+                                        Finish this dish: add price, description
+                                        and photo to publish
                                     </p>
                                 )}
                                 <div className="mt-2 flex flex-wrap gap-2">
-                                    <Button size="sm" variant="outline" onClick={() => setEditing(m)}>
-                                        {m.needsDetails ? "Finish dish" : "Edit"}
+                                    <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => setEditing(m)}
+                                    >
+                                        {m.needsDetails
+                                            ? "Finish dish"
+                                            : "Edit"}
                                     </Button>
                                     {!m.isDraft && (
                                         <Button
@@ -1210,7 +1540,9 @@ export function VMenu() {
                                     onChange={(v) => toggleItemOn(m, v)}
                                     label={`${m.name} available`}
                                 />
-                                <span className="text-[10px] font-semibold text-ink-3">{m.on ? "Cooking" : "Off menu"}</span>
+                                <span className="text-[10px] font-semibold text-ink-3">
+                                    {m.on ? "Cooking" : "Off menu"}
+                                </span>
                             </div>
                         </li>
                     ))}
@@ -1220,15 +1552,33 @@ export function VMenu() {
                     icon={ChefHat}
                     title="Your menu is empty"
                     text="Add the dishes you cook so students on campus can order from your pot."
-                    action={<Button onClick={() => setAdding(true)}>Add your first dish</Button>}
+                    action={
+                        <Button onClick={() => setAdding(true)}>
+                            Add your first dish
+                        </Button>
+                    }
                 />
             )}
 
-            <Modal open={adding} onClose={() => setAdding(false)} title="Add a dish">
+            <Modal
+                open={adding}
+                onClose={() => setAdding(false)}
+                title="Add a dish"
+            >
                 <ItemForm onSave={save} submitting={saving} />
             </Modal>
-            <Modal open={!!editing} onClose={() => setEditing(null)} title={editing?.name}>
-                {editing && <ItemForm item={editing} onSave={saveEdit} submitting={saving} />}
+            <Modal
+                open={!!editing}
+                onClose={() => setEditing(null)}
+                title={editing?.name}
+            >
+                {editing && (
+                    <ItemForm
+                        item={editing}
+                        onSave={saveEdit}
+                        submitting={saving}
+                    />
+                )}
             </Modal>
         </div>
     );
@@ -1252,17 +1602,31 @@ export function VEarnings() {
     const released = ledger.data?.released ?? 0;
 
     const salesByDay = useMemo(() => {
-        const totals = { Mon: 0, Tue: 0, Wed: 0, Thu: 0, Fri: 0, Sat: 0, Sun: 0 };
+        const totals = {
+            Mon: 0,
+            Tue: 0,
+            Wed: 0,
+            Thu: 0,
+            Fri: 0,
+            Sat: 0,
+            Sun: 0,
+        };
         const weekAgo = Date.now() - 7 * 86400_000;
         (vendorOrders.data || []).forEach((o) => {
-            const paid = o.payment?.status === "paid" || o.payment?.status === "released";
+            const paid =
+                o.payment?.status === "paid" ||
+                o.payment?.status === "released";
             if (!paid || o.status === "cancelled" || o.cancelledAt) return;
             const ts = o.createdAt || Date.now();
             if (ts < weekAgo) return;
             const dayName = DAY_LABELS[new Date(ts).getDay()];
-            totals[dayName] = (totals[dayName] || 0) + (Number(o.subtotal ?? o.total) || 0);
+            totals[dayName] =
+                (totals[dayName] || 0) + (Number(o.subtotal ?? o.total) || 0);
         });
-        return ORDERED_DAYS.map((d) => ({ d, v: Math.round(totals[d] * 100) / 100 }));
+        return ORDERED_DAYS.map((d) => ({
+            d,
+            v: Math.round(totals[d] * 100) / 100,
+        }));
     }, [vendorOrders.data]);
 
     const max = Math.max(0, ...salesByDay.map((s) => s.v));
@@ -1274,7 +1638,8 @@ export function VEarnings() {
             <div>
                 <h1 className="text-2xl font-extrabold">Earnings</h1>
                 <p className="mt-1 text-sm text-ink-2">
-                    You keep the full menu price. The {Math.round(FEE_RATE * 100)}% STEW fee is added to the
+                    You keep the full menu price. The{" "}
+                    {Math.round(FEE_RATE * 100)}% STEW fee is added to the
                     student&apos;s total, not taken out of your payout.
                 </p>
             </div>
@@ -1295,19 +1660,31 @@ export function VEarnings() {
             ) : (
                 <div className="grid gap-3 sm:grid-cols-2">
                     <Card className="border-brand/40 bg-brand-soft">
-                        <p className="text-xs font-semibold text-brand-strong">Waiting on collection</p>
-                        <p className="num mt-1 text-2xl font-extrabold">{money(held)}</p>
+                        <p className="text-xs font-semibold text-brand-strong">
+                            Waiting on collection
+                        </p>
+                        <p className="num mt-1 text-2xl font-extrabold">
+                            {money(held)}
+                        </p>
                         <p className="mt-1 text-xs text-ink-2">
-                            {ledger.data?.heldCount || 0} order{(ledger.data?.heldCount || 0) === 1 ? "" : "s"} paid by
-                            students but not yet confirmed as collected. STEW is holding this money for you.
+                            {ledger.data?.heldCount || 0} order
+                            {(ledger.data?.heldCount || 0) === 1 ? "" : "s"}{" "}
+                            paid by students but not yet confirmed as collected.
+                            STEW is holding this money for you.
                         </p>
                     </Card>
                     <Card className="border-ok/40 bg-ok-soft">
-                        <p className="text-xs font-semibold text-ok">Released to you</p>
-                        <p className="num mt-1 text-2xl font-extrabold">{money(released)}</p>
+                        <p className="text-xs font-semibold text-ok">
+                            Released to you
+                        </p>
+                        <p className="num mt-1 text-2xl font-extrabold">
+                            {money(released)}
+                        </p>
                         <p className="mt-1 text-xs text-ink-2">
-                            {ledger.data?.releasedCount || 0} collected order{(ledger.data?.releasedCount || 0) === 1 ? "" : "s"}{" "}
-                            confirmed by the student. Paid out to your MoMo number.
+                            {ledger.data?.releasedCount || 0} collected order
+                            {(ledger.data?.releasedCount || 0) === 1 ? "" : "s"}{" "}
+                            confirmed by the student. Paid out to your MoMo
+                            number.
                         </p>
                     </Card>
                 </div>
@@ -1316,32 +1693,64 @@ export function VEarnings() {
             <Card className="space-y-1 text-sm">
                 <p className="font-bold">How your money works</p>
                 <p className="text-ink-2">
-                    A student pays STEW, not you. We hold it while you cook. When the student confirms
-                    they collected the food, we release your share. This protects you too: it is why a
-                    student cannot simply claim they never got the food after you handed it over.
+                    A student pays STEW, not you. We hold it while you cook.
+                    When the student confirms they collected the food, we
+                    release your share. This protects you too: it is why a
+                    student cannot simply claim they never got the food after
+                    you handed it over.
                 </p>
                 <p className="text-xs text-ink-3">
-                    If a student has collected but not confirmed, nudge them from the order — you can also
-                    contact STEW and we will chase it. {ledger.data?.note}
+                    If a student has collected but not confirmed, nudge them
+                    from the order — you can also contact STEW and we will chase
+                    it. {ledger.data?.note}
                 </p>
             </Card>
 
             <div className="grid gap-3 sm:grid-cols-3">
-                <Card><p className="text-xs text-ink-3">This week</p><p className="num text-2xl font-extrabold">{money(total)}</p></Card>
-                <Card><p className="text-xs text-ink-3">Best day</p><p className="text-2xl font-extrabold">{bestDay}</p></Card>
-                <Card><p className="text-xs text-ink-3">Next payout</p><p className="text-2xl font-extrabold">{held > 0 ? money(held) : "—"}</p></Card>
+                <Card>
+                    <p className="text-xs text-ink-3">This week</p>
+                    <p className="num text-2xl font-extrabold">
+                        {money(total)}
+                    </p>
+                </Card>
+                <Card>
+                    <p className="text-xs text-ink-3">Best day</p>
+                    <p className="text-2xl font-extrabold">{bestDay}</p>
+                </Card>
+                <Card>
+                    <p className="text-xs text-ink-3">Next payout</p>
+                    <p className="text-2xl font-extrabold">
+                        {held > 0 ? money(held) : "—"}
+                    </p>
+                </Card>
             </div>
             <Card>
                 <h2 className="mb-4 font-bold">Sales by day (last 7 days)</h2>
-                <div className="flex h-48 items-end gap-3" role="img" aria-label="Bar chart of sales by day">
+                <div
+                    className="flex h-48 items-end gap-3"
+                    role="img"
+                    aria-label="Bar chart of sales by day"
+                >
                     {salesByDay.map((s) => (
-                        <div key={s.d} className="flex flex-1 flex-col items-center gap-1">
-                            <span className="num text-[11px] text-ink-3">{s.v > 0 ? money(s.v) : "0"}</span>
+                        <div
+                            key={s.d}
+                            className="flex flex-1 flex-col items-center gap-1"
+                        >
+                            <span className="num text-[11px] text-ink-3">
+                                {s.v > 0 ? money(s.v) : "0"}
+                            </span>
                             <div
                                 className="w-full rounded-t-lg bg-brand transition-all"
-                                style={{ height: max > 0 ? `${Math.max(4, (s.v / max) * 100)}%` : "4px" }}
+                                style={{
+                                    height:
+                                        max > 0
+                                            ? `${Math.max(4, (s.v / max) * 100)}%`
+                                            : "4px",
+                                }}
                             />
-                            <span className="text-xs font-semibold text-ink-2">{s.d}</span>
+                            <span className="text-xs font-semibold text-ink-2">
+                                {s.d}
+                            </span>
                         </div>
                     ))}
                 </div>
@@ -1405,16 +1814,25 @@ export function VKitchen() {
     };
 
     return (
-        <form onSubmit={handleSubmit(save)} noValidate className="max-w-lg space-y-5">
+        <form
+            onSubmit={handleSubmit(save)}
+            noValidate
+            className="max-w-lg space-y-5"
+        >
             <div>
                 <h1 className="text-2xl font-extrabold">Kitchen profile</h1>
-                <p className="mt-1 text-sm text-ink-2">This is what students see when they open your kitchen.</p>
+                <p className="mt-1 text-sm text-ink-2">
+                    This is what students see when they open your kitchen.
+                </p>
             </div>
 
             <Card className="space-y-4">
                 <div className="flex items-center gap-4">
                     <KitchenLogo
-                        vendor={{ name: kitchenName || auth.user?.kitchenName, logo }}
+                        vendor={{
+                            name: kitchenName || auth.user?.kitchenName,
+                            logo,
+                        }}
                         size="h-20 w-20"
                         className="rounded-2xl"
                         text="text-2xl"
@@ -1422,39 +1840,82 @@ export function VKitchen() {
                     <div className="min-w-0 flex-1">
                         <p className="text-sm font-semibold">Kitchen logo</p>
                         <p className="text-xs text-ink-3">
-                            Add a photo of your kitchen or your own logo. Without one we show your kitchen initials.
+                            Add a photo of your kitchen or your own logo.
+                            Without one we show your kitchen initials.
                         </p>
                         <div className="mt-2 flex flex-wrap items-center gap-2">
-                            <input type="file" accept="image/*" className={fileCls} onChange={pickLogo} disabled={busy} />
-                            {logo && <Button size="sm" variant="outline" onClick={() => setLogo(null)}>Remove logo</Button>}
+                            <input
+                                type="file"
+                                accept="image/*"
+                                className={fileCls}
+                                onChange={pickLogo}
+                                disabled={busy}
+                            />
+                            {logo && (
+                                <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => setLogo(null)}
+                                >
+                                    Remove logo
+                                </Button>
+                            )}
                         </div>
                     </div>
                 </div>
 
                 <Field label="Kitchen name" error={errors.kitchen}>
-                    <Input invalid={errors.kitchen} {...register("kitchen", { required: "Enter a kitchen name", minLength: { value: 3, message: "Too short" } })} />
+                    <Input
+                        invalid={errors.kitchen}
+                        {...register("kitchen", {
+                            required: "Enter a kitchen name",
+                            minLength: { value: 3, message: "Too short" },
+                        })}
+                    />
                 </Field>
-                <Field label="What do you cook?" error={errors.sells} hint="Your own dishes, separated by commas">
+                <Field
+                    label="What do you cook?"
+                    error={errors.sells}
+                    hint="Your own dishes, separated by commas"
+                >
                     <Input
                         invalid={errors.sells}
                         placeholder="Palm nut soup, Groundnut soup, Fufu"
-                        {...register("sells", { validate: (v) => toList(v).length > 0 || "Add at least one dish" })}
+                        {...register("sells", {
+                            validate: (v) =>
+                                toList(v).length > 0 || "Add at least one dish",
+                        })}
                     />
                 </Field>
-                <Field label="About your pot" error={errors.bio} hint="Shown on your kitchen page">
+                <Field
+                    label="About your pot"
+                    error={errors.bio}
+                    hint="Shown on your kitchen page"
+                >
                     <Textarea
                         invalid={errors.bio}
                         maxLength={240}
                         placeholder="One pot of soup a week. Palm nut, groundnut and light soup, cooked slow."
-                        {...register("bio", { maxLength: { value: 240, message: "Max 240 characters" } })}
+                        {...register("bio", {
+                            maxLength: {
+                                value: 240,
+                                message: "Max 240 characters",
+                            },
+                        })}
                     />
                 </Field>
                 <Field label="Where do you cook from?">
                     <Select {...register("hall")}>
-                        {CAMPUS.areas.map((h) => <option key={h}>{h}</option>)}
+                        {CAMPUS.areas.map((h) => (
+                            <option key={h}>{h}</option>
+                        ))}
                     </Select>
                 </Field>
-                <Field label="Days you need to cook a batch" error={errors.prep} hint="Roughly how long a pot takes you">
+                <Field
+                    label="Days you need to cook a batch"
+                    error={errors.prep}
+                    hint="Roughly how long a pot takes you"
+                >
                     <Input
                         type="number"
                         invalid={errors.prep}
@@ -1468,9 +1929,16 @@ export function VKitchen() {
             </Card>
 
             {errors.root && (
-                <p role="alert" className="rounded-lg bg-bad-soft p-3 text-sm font-medium text-bad">{errors.root.message}</p>
+                <p
+                    role="alert"
+                    className="rounded-lg bg-bad-soft p-3 text-sm font-medium text-bad"
+                >
+                    {errors.root.message}
+                </p>
             )}
-            <Button type="submit" loading={isSubmitting}>Save kitchen profile</Button>
+            <Button type="submit" loading={isSubmitting}>
+                Save kitchen profile
+            </Button>
         </form>
     );
 }
@@ -1520,7 +1988,8 @@ export function VSettings() {
                 <div>
                     <h1 className="text-2xl font-extrabold">Settings</h1>
                     <p className="mt-1 text-sm text-ink-2">
-                        Payouts and alerts. Your public kitchen profile lives under Kitchen.
+                        Payouts and alerts. Your public kitchen profile lives
+                        under Kitchen.
                     </p>
                 </div>
                 <Card className="space-y-4">
@@ -1535,19 +2004,33 @@ export function VSettings() {
                             {...register("payout", {
                                 required: "Required",
                                 setValueAs: (v) => v.replace(/\s/g, ""),
-                                pattern: { value: CAMPUS.phoneRe, message: "Enter a valid Ghana mobile number" },
+                                pattern: {
+                                    value: CAMPUS.phoneRe,
+                                    message:
+                                        "Enter a valid Ghana mobile number",
+                                },
                             })}
                         />
                     </Field>
                     <div className="flex items-center justify-between">
                         <div>
-                            <p className="text-sm font-semibold">New order notifications</p>
-                            <p className="text-xs text-ink-3">Get told the moment an order lands.</p>
+                            <p className="text-sm font-semibold">
+                                New order notifications
+                            </p>
+                            <p className="text-xs text-ink-3">
+                                Get told the moment an order lands.
+                            </p>
                         </div>
-                        <Switch checked={notify} onChange={setNotify} label="Notifications" />
+                        <Switch
+                            checked={notify}
+                            onChange={setNotify}
+                            label="Notifications"
+                        />
                     </div>
                 </Card>
-                <Button type="submit" loading={isSubmitting}>Save changes</Button>
+                <Button type="submit" loading={isSubmitting}>
+                    Save changes
+                </Button>
             </form>
 
             <div className="pt-2">
@@ -1563,10 +2046,21 @@ export function VSettings() {
             </div>
 
             <Card className="border-bad/30 bg-bad-soft/20 p-4 space-y-2">
-                <p className="text-xs font-bold uppercase tracking-wider text-bad">Danger zone</p>
-                <p className="text-xs text-ink-2">Permanently close your kitchen and delete your vendor account and menu listings.</p>
-                <Button variant="danger" size="sm" className="mt-1" onClick={() => setAskDelete(true)}>
-                    <Trash2 className="h-4 w-4" />Delete kitchen account
+                <p className="text-xs font-bold uppercase tracking-wider text-bad">
+                    Danger zone
+                </p>
+                <p className="text-xs text-ink-2">
+                    Permanently close your kitchen and delete your vendor
+                    account and menu listings.
+                </p>
+                <Button
+                    variant="danger"
+                    size="sm"
+                    className="mt-1"
+                    onClick={() => setAskDelete(true)}
+                >
+                    <Trash2 className="h-4 w-4" />
+                    Delete kitchen account
                 </Button>
             </Card>
 
@@ -1578,7 +2072,8 @@ export function VSettings() {
                 confirmLabel="Yes, log out"
             >
                 <p className="text-sm text-ink-2">
-                    You will stop receiving new orders on this device until you log back in.
+                    You will stop receiving new orders on this device until you
+                    log back in.
                 </p>
             </ConfirmDialog>
 
@@ -1590,7 +2085,9 @@ export function VSettings() {
                 confirmLabel="Yes, delete my kitchen"
             >
                 <p className="text-sm text-ink-2">
-                    This will permanently close your kitchen, remove your active dishes, and delete your vendor account from STEW. This action cannot be undone.
+                    This will permanently close your kitchen, remove your active
+                    dishes, and delete your vendor account from STEW. This
+                    action cannot be undone.
                 </p>
             </ConfirmDialog>
         </div>
