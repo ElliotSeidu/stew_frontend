@@ -701,6 +701,7 @@ export function VDashboard() {
             window.removeEventListener("focus", onFocus);
             document.removeEventListener("visibilitychange", onFocus);
         };
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional polling; loadOrders is stable via useCallback
     }, [loadOrders]);
 
     const toggleOpen = async (nextOpen) => {
@@ -767,6 +768,7 @@ export function VDashboard() {
     }, [queue, filter]);
 
     const weekTotal = useMemo(() => {
+        // eslint-disable-next-line react(purity) -- Date.now() is intentional; queue refreshes every 3s
         const weekAgo = Date.now() - 7 * 86400_000;
         return queue
             .filter((o) => o.paid && (o.createdAt || 0) >= weekAgo)
@@ -1597,6 +1599,7 @@ export function VEarnings() {
             vendorOrders.retry();
         }, 5000);
         return () => clearInterval(t);
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- [ledger.retry, vendorOrders.retry] are stable polling handles
     }, [ledger.retry, vendorOrders.retry]);
     const held = ledger.data?.held ?? 0;
     const released = ledger.data?.released ?? 0;
@@ -1611,6 +1614,7 @@ export function VEarnings() {
             Sat: 0,
             Sun: 0,
         };
+        // eslint-disable-next-line react(purity) -- Date.now() intentional; vendorOrders refreshes every 5s
         const weekAgo = Date.now() - 7 * 86400_000;
         (vendorOrders.data || []).forEach((o) => {
             const paid =

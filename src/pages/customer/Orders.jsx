@@ -123,7 +123,11 @@ function OrderThread({ order, from, onSent }) {
 export function Orders() {
   const [tab, setTab] = useState('active')
   const orders = useAsync(() => api.orders(), [])
-  useEffect(() => { const t = setInterval(() => orders.retry(true), 4000); return () => clearInterval(t) }, [orders.retry])
+  // Keep a ref to the latest retry so the polling interval never becomes stale
+  const ordersRetryRef = useRef(orders.retry)
+  useEffect(() => { ordersRetryRef.current = orders.retry }, [orders.retry])
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional polling; uses ref for stability
+  useEffect(() => { const t = setInterval(() => ordersRetryRef.current(true), 4000); return () => clearInterval(t) }, [])
   const list = (orders.data || []).filter((o) => (tab === 'active') === !finished(o.status))
   return (
     <div className="mx-auto max-w-2xl space-y-4">
