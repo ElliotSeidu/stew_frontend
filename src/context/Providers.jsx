@@ -132,6 +132,8 @@ function AuthProvider({ children }) {
       return u
     },
     logout: () => {
+      // Revoke the server JWT before clearing local storage so the Bearer header is sent
+      api.logout().catch(() => {})
       // Clear all STEW-prefixed storage keys to prevent stale data leakage
       Object.keys(localStorage).filter((k) => k.startsWith('stew.')).forEach((k) => localStorage.removeItem(k))
       setUser(null)

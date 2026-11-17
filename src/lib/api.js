@@ -72,6 +72,7 @@ const real = {
   reset: (p) => post('/auth/reset-password/', p),
   requestLoginCode: (p) => post('/auth/login-code/request/', p),
   loginWithCode: (p) => post('/auth/login-code/verify/', p),
+  logout: () => post('/auth/logout/', {}),
   checkReference: (p) => post('/auth/check-reference/', p),
   me: () => http('/auth/me/'),
   updateMe: (p) => http('/auth/me/', { method: 'PATCH', body: p }),
@@ -297,6 +298,7 @@ const mock = {
     if (u.verified === false) throw unverified()
     return session(u)
   },
+  async logout() { return { ok: true } },
   async forgot() { await wait(); return { ok: true } }, // never reveal whether an account exists
   async reset({ email, code, password }) {
     await wait()
