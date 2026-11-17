@@ -4,10 +4,10 @@ import { read, write, uid } from './utils'
 
 const rawBase = (import.meta.env.VITE_API_URL || '').trim()
 const BASE = rawBase.replace(/\/+$/, '')
-export const MOCK = !BASE
+export const MOCK = !import.meta.env.PROD && (import.meta.env.VITE_USE_MOCK === 'true' || !BASE)
 // Safety guard: catch misconfigured production builds early
-if (MOCK && import.meta.env.PROD) {
-  console.error('[STEW] VITE_API_URL is not set but this is a production build. This is a configuration error — all API calls will use mock data.')
+if (import.meta.env.PROD && !BASE) {
+  console.error('[STEW] CRITICAL: VITE_API_URL is not set in a production build. Refusing to fall back to mock data.')
 }
 if (typeof window !== 'undefined' && import.meta.env.PROD && window.location.protocol === 'https:' && BASE.startsWith('http://')) {
   console.warn('[STEW] Mixed content warning: HTTPS frontend is calling an insecure HTTP API URL. Configure VITE_API_URL with HTTPS.')
@@ -15,6 +15,9 @@ if (typeof window !== 'undefined' && import.meta.env.PROD && window.location.pro
 const wait = (ms = 350) => new Promise((r) => setTimeout(r, ms))
 
 async function http(path, { method = 'GET', body } = {}) {
+  if (!BASE) {
+    throw Object.assign(new Error('Service configuration error: VITE_API_URL is not set.'), { status: 503 })
+  }
   const token = localStorage.getItem('stew.token')
   const controller = new AbortController()
   const timeoutId = setTimeout(() => controller.abort(), 15000) // 15s timeout
@@ -135,18 +138,18 @@ const withStatus = (o) => {
 const withMeetup = (o) => ({ ...o, meetup: o.meetup || null })
 const withBatch = (o) => ({ ...o, prepStage: o.prepStage || 'accepted', messages: o.messages || [] })
 const full = (o) => withBatch(withMeetup(withStatus(o)))
-const roleFor = (e) => (e.startsWith('admin') ? 'admin' : (e.startsWith('vendor') || e.startsWith('both')) ? 'vendor' : 'customer')
+const roleFor = (e) => ((e.startsWith('vendor') || e.startsWith('both')) ? 'vendor' : 'customer')
 const accountFor = (email) => {
   const u = read('stew.users', []).find((x) => x.email === email)
-  if (u) return { isVendor: u.role === 'vendor', isAdmin: u.role === 'admin', ...u }
-  if (/^(demo|vendor|admin|both)@/.test(email)) {
+  if (u) return { isVendor: Boolean(u.isVendor || u.role === 'vendor'), isAdmin: Boolean(u.isAdmin), ...u }
+  if (/^(demo|vendor|both)@/.test(email)) {
     const role = roleFor(email)
     const isBoth = email.startsWith('both')
     const accountType = isBoth ? 'both' : role
     return {
       id: email, fullName: email.split('@')[0], email, role,
-      accountType, // 'vendor', 'both', 'admin', 'customer'
-      isVendor: role === 'vendor', isAdmin: role === 'admin',
+      accountType,
+      isVendor: role === 'vendor', isAdmin: false,
       kitchenName: role === 'vendor' ? "Auntie Ama's Soup Pot" : undefined,
       area: CAMPUS.areas[0], phone: '0240000000', referenceId: '20000000',
     }
@@ -510,7 +513,7 @@ const mock = {
     const u = read('stew.me')
     if (u) {
       const accountType = u.accountType === 'customer' ? 'both' : (u.accountType || 'vendor')
-      const next = { ...u, isVendor: true, role: u.role === 'admin' ? 'admin' : 'vendor', accountType }
+      const next = { ...u, isVendor: true, role: u.isAdmin ? u.role : 'vendor', accountType }
       write('stew.me', next)
       write('stew.users', read('stew.users', []).map((x) => (x.email === u.email ? { ...x, isVendor: true, role: next.role, accountType } : x)))
       return next
@@ -520,7 +523,7 @@ const mock = {
   async deleteAccount() {
     await wait(400)
     const u = read('stew.me')
-    if (u?.isAdmin || u?.role === 'admin' || (u?.email || '').toLowerCase().startsWith('admin')) {
+    if (u?.isAdmin) {
       throw new Error('Admin accounts cannot be deleted.')
     }
     if (u) {
