@@ -1,8 +1,8 @@
-import { useEffect } from "react";
+import { Component, Suspense, lazy, useEffect } from "react";
 import { Navigate, Outlet, Route, Routes, useLocation } from "react-router-dom";
 import Landing from "./pages/marketing/Landing";
 import Legal from "./pages/legal/Legal";
-import { Logo, ThemeToggle } from "./components/ui";
+import { Button, Logo, ThemeToggle } from "./components/ui";
 import {
     ForgotPassword,
     Login,
@@ -19,30 +19,115 @@ import Home from "./pages/customer/Home";
 import Discover from "./pages/customer/Discover";
 import VendorPage from "./pages/customer/VendorPage";
 import { Cart, Checkout } from "./pages/customer/Cart";
-import { Orders, OrderDetail, PayOrder, Review } from "./pages/customer/Orders";
 import { Favorites, Account } from "./pages/customer/Account";
 import { Support, NewCase } from "./pages/customer/Support";
-import {
-    Apply,
-    VDashboard,
-    VKitchen,
-    VMenu,
-    VEarnings,
-    VSettings,
-} from "./pages/vendor/Vendor";
-import {
-    AOverview,
-    AVendors,
-    AOrders,
-    ADisputes,
-    AModeration,
-    ACompliance,
-    APayouts,
-    AAudit,
-    AUsers,
-} from "./pages/admin/Admin";
 import NotFound from "./pages/NotFound";
 import { track } from "./lib/analytics";
+
+const lazyPayloads = [];
+
+function lazyRoute(loader, exportName) {
+    const ctor = () => loader().then((m) => ({ default: m[exportName] }));
+    const Comp = lazy(ctor);
+    lazyPayloads.push([Comp, ctor]);
+    return Comp;
+}
+
+function resetFailedChunks() {
+    for (const [Comp, ctor] of lazyPayloads) {
+        if (Comp?._payload && Comp._payload._status === 2) {
+            Comp._payload._status = -1;
+            Comp._payload._result = ctor;
+        }
+    }
+}
+
+const loadOrders = () => import("./pages/customer/Orders");
+const Orders = lazyRoute(loadOrders, "Orders");
+const OrderDetail = lazyRoute(loadOrders, "OrderDetail");
+const PayOrder = lazyRoute(loadOrders, "PayOrder");
+const Review = lazyRoute(loadOrders, "Review");
+
+const loadVendor = () => import("./pages/vendor/Vendor");
+const Apply = lazyRoute(loadVendor, "Apply");
+const VDashboard = lazyRoute(loadVendor, "VDashboard");
+const VKitchen = lazyRoute(loadVendor, "VKitchen");
+const VMenu = lazyRoute(loadVendor, "VMenu");
+const VEarnings = lazyRoute(loadVendor, "VEarnings");
+const VSettings = lazyRoute(loadVendor, "VSettings");
+
+const loadAdmin = () => import("./pages/admin/Admin");
+const AOverview = lazyRoute(loadAdmin, "AOverview");
+const AVendors = lazyRoute(loadAdmin, "AVendors");
+const AOrders = lazyRoute(loadAdmin, "AOrders");
+const ADisputes = lazyRoute(loadAdmin, "ADisputes");
+const AModeration = lazyRoute(loadAdmin, "AModeration");
+const ACompliance = lazyRoute(loadAdmin, "ACompliance");
+const APayouts = lazyRoute(loadAdmin, "APayouts");
+const AAudit = lazyRoute(loadAdmin, "AAudit");
+const AUsers = lazyRoute(loadAdmin, "AUsers");
+
+function RouteFallback() {
+    return (
+        <div
+            role="status"
+            aria-live="polite"
+            className="flex min-h-[40vh] items-center justify-center px-4 py-12 text-sm font-semibold text-ink-3"
+        >
+            Loading page…
+        </div>
+    );
+}
+
+class ChunkErrorBoundary extends Component {
+    constructor(props) {
+        super(props);
+        this.state = { hasError: false };
+        this.handleRetry = this.handleRetry.bind(this);
+    }
+
+    static getDerivedStateFromError() {
+        return { hasError: true };
+    }
+
+    componentDidUpdate(prevProps) {
+        if (this.state.hasError && prevProps.resetKey !== this.props.resetKey) {
+            resetFailedChunks();
+            this.setState({ hasError: false });
+        }
+    }
+
+    handleRetry() {
+        resetFailedChunks();
+        this.setState({ hasError: false });
+    }
+
+    render() {
+        if (this.state.hasError) {
+            return (
+                <div
+                    role="alert"
+                    className="mx-auto my-12 max-w-md rounded-2xl border border-line bg-surface p-6 text-center shadow-sm"
+                >
+                    <h2 className="text-base font-extrabold text-ink">
+                        Could not load this page
+                    </h2>
+                    <p className="mt-1 text-sm text-ink-2">
+                        Check your campus connection and try again.
+                    </p>
+                    <Button
+                        variant="outline"
+                        className="mt-4"
+                        onClick={this.handleRetry}
+                    >
+                        Retry
+                    </Button>
+                </div>
+            );
+        }
+        return this.props.children;
+    }
+}
 
 function Root() {
     const { user } = useAuth();
@@ -96,10 +181,13 @@ function RouteTracker() {
 }
 
 export default function App() {
+    const { pathname } = useLocation();
     return (
         <>
             <RouteTracker />
-            <Routes>
+            <ChunkErrorBoundary resetKey={pathname}>
+                <Suspense fallback={<RouteFallback />}>
+                    <Routes>
                 <Route path="/" element={<Root />} />
                 <Route path="/landing" element={<Landing />} />
                 <Route path="/legal/:slug?" element={<Legal />} />
@@ -183,7 +271,9 @@ export default function App() {
                 </Route>
 
                 <Route path="*" element={<NotFound />} />
-            </Routes>
+                    </Routes>
+                </Suspense>
+            </ChunkErrorBoundary>
         </>
     );
 }
