@@ -30,6 +30,19 @@ async function http(path, { method = 'GET', body } = {}) {
     })
     const data = await res.json().catch(() => ({}))
     if (!res.ok) throw Object.assign(new Error(data.detail || data.message || 'Something went wrong'), { code: data.code, status: res.status, fields: data.errors })
+    const totalHdr = res.headers.get('X-Total-Count')
+    if (Array.isArray(data) && totalHdr !== null) {
+      Object.defineProperty(data, '_pagination', {
+        value: {
+          total: Number(totalHdr) || data.length,
+          limit: Number(res.headers.get('X-Result-Limit')) || data.length,
+          offset: Number(res.headers.get('X-Result-Offset')) || 0,
+          truncated: res.headers.get('X-Truncated') === 'true',
+        },
+        enumerable: false,
+        configurable: true,
+      })
+    }
     return data
   } catch (err) {
     if (err.name === 'AbortError') throw new Error('Request timed out. Please check your connection and try again.')
@@ -39,6 +52,16 @@ async function http(path, { method = 'GET', body } = {}) {
   }
 }
 const post = (path, body) => http(path, { method: 'POST', body })
+const qsPage = (params, extra = {}) => {
+  const q = new URLSearchParams()
+  Object.entries(extra).forEach(([k, v]) => {
+    if (v !== undefined && v !== null && v !== '') q.set(k, String(v))
+  })
+  if (params?.limit) q.set('limit', String(params.limit))
+  if (params?.offset) q.set('offset', String(params.offset))
+  const s = q.toString()
+  return s ? `?${s}` : ''
+}
 
 const real = {
   register: (p) => post('/auth/register/', p),
@@ -53,15 +76,15 @@ const real = {
   me: () => http('/auth/me/'),
   updateMe: (p) => http('/auth/me/', { method: 'PATCH', body: p }),
   deleteAccount: () => http('/auth/delete-account/', { method: 'DELETE' }),
-  vendors: () => http('/vendors/'),
+  vendors: (params) => http('/vendors/' + qsPage(params)),
   vendor: (id) => http(`/vendors/${encodeURIComponent(id)}/`),
-  meals: () => http('/meals/'),
-  myMeals: () => http('/meals/?mine=true'),
+  meals: (params) => http('/meals/' + qsPage(params)),
+  myMeals: (params) => http('/meals/' + qsPage(params, { mine: 'true' })),
   createMeal: (p) => post('/meals/', p),
   updateMeal: (id, p) => http(`/meals/${encodeURIComponent(id)}/`, { method: 'PATCH', body: p }),
   deleteMeal: (id) => http(`/meals/${encodeURIComponent(id)}/`, { method: 'DELETE' }),
   createOrder: (p) => post('/orders/', p),
-  orders: (params) => http('/orders/' + (params?.scope ? `?scope=${encodeURIComponent(params.scope)}` : '')),
+  orders: (params) => http('/orders/' + qsPage(params, params?.scope ? { scope: params.scope } : {})),
   order: (id) => http(`/orders/${id}/`),
   cancelOrder: (id) => post(`/orders/${id}/cancel/`),
 
@@ -94,29 +117,29 @@ const real = {
   reviews: (arg) => {
     const vendorId = typeof arg === 'object' ? arg?.vendorId : arg
     const includeHidden = typeof arg === 'object' && arg?.includeHidden
-    const qs = includeHidden ? '?includeHidden=true' : ''
-    return http(`/vendors/${encodeURIComponent(vendorId || '')}/reviews/${qs}`)
+    const extra = includeHidden ? { includeHidden: 'true' } : {}
+    return http(`/vendors/${encodeURIComponent(vendorId || '')}/reviews/${qsPage(typeof arg === 'object' ? arg : null, extra)}`)
   },
-  moderationQueue: () => http('/admin/reviews/queue/'),
+  moderationQueue: (params) => http('/admin/reviews/queue/' + qsPage(params)),
   moderateReview: (orderId, decision, reason) => post(`/admin/reviews/${orderId}/moderate/`, { decision, reason }),
 
   // --- vendor compliance evidence (FDA permit) ------------------------------
   saveCompliance: (p) => post('/vendor/compliance/', p),
   compliance: () => http('/vendor/compliance/'),
-  allCompliance: () => http('/admin/compliance/'),
+  allCompliance: (params) => http('/admin/compliance/' + qsPage(params)),
 
   // --- payout batches: aggregate settlements, not per-order transfers -------
-  payoutBatches: () => http('/payouts/batches/'),
+  payoutBatches: (params) => http('/payouts/batches/' + qsPage(params)),
   createPayoutBatch: () => post('/payouts/batches/'),
 
   createCase: (p) => post('/support/cases/', p),
-  cases: () => http('/support/cases/'),
+  cases: (params) => http('/support/cases/' + qsPage(params)),
   resolveCase: (code, action) => post(`/support/cases/${encodeURIComponent(code)}/resolve/`, { action }),
-  adminVendors: () => http('/admin/vendors/'),
+  adminVendors: (params) => http('/admin/vendors/' + qsPage(params)),
   updateAdminVendor: (id, p) => http(`/admin/vendors/${encodeURIComponent(id)}/`, { method: 'PATCH', body: p }),
-  adminUsers: () => http('/admin/users/'),
+  adminUsers: (params) => http('/admin/users/' + qsPage(params)),
   updateAdminUser: (id, p) => http(`/admin/users/${encodeURIComponent(id)}/`, { method: 'PATCH', body: p }),
-  auditLogs: () => http('/admin/audit/'),
+  auditLogs: (params) => http('/admin/audit/' + qsPage(params)),
   createReview: (p) => post('/reviews/', p),
   applyVendor: (p) => post('/vendor/apply/', p),
   markVendor: () => post('/vendor/activate/'),

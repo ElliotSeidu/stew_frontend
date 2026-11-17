@@ -31,6 +31,7 @@ import {
     Select,
     Switch,
     Textarea,
+    TruncationNotice,
 } from "../../components/ui";
 import { CAMPUS, niceDay, FEE_RATE } from "../../config";
 import { useAuth, useToast } from "../../context/Providers";
@@ -596,6 +597,8 @@ export function VDashboard() {
     const toast = useToast();
     const [open, setOpen] = useState(() => auth.user?.kitchenOpen !== false);
     const [queue, setQueue] = useState([]);
+    const [ordersMeta, setOrdersMeta] = useState(null);
+    const [ledgerData, setLedgerData] = useState(null);
     const [loading, setLoading] = useState(true);
     const [busyId, setBusyId] = useState(null);
     const [openOrder, setOpenOrder] = useState(null);
@@ -607,7 +610,12 @@ export function VDashboard() {
 
     const loadOrders = useCallback(async () => {
         try {
-            const raw = await api.orders({ scope: "vendor" });
+            const [raw, ledger] = await Promise.all([
+                api.orders({ scope: "vendor" }),
+                api.payouts().catch(() => null),
+            ]);
+            setOrdersMeta(raw?._pagination || null);
+            if (ledger) setLedgerData(ledger);
             const activeOrders = (raw || [])
                 .filter((o) => o.status !== "cancelled" && !o.cancelledAt)
                 .map(normalizeVendorOrder);
@@ -768,20 +776,35 @@ export function VDashboard() {
     }, [queue, filter]);
 
     const weekTotal = useMemo(() => {
+        if (ledgerData && ledgerData.weekTotal !== undefined) {
+            return Number(ledgerData.weekTotal) || 0;
+        }
         // eslint-disable-next-line react(purity) -- Date.now() is intentional; queue refreshes every 3s
         const weekAgo = Date.now() - 7 * 86400_000;
         return queue
             .filter((o) => o.paid && (o.createdAt || 0) >= weekAgo)
             .reduce((sum, o) => sum + (Number(o.subtotal ?? o.total) || 0), 0);
-    }, [queue]);
+    }, [ledgerData, queue]);
 
-    const newCount = queue.filter(
-        (o) => (o.stage || "accepted") === "accepted"
-    ).length;
-    const readyCount = queue.filter((o) => o.stage === "ready").length;
+    const newCount =
+        ledgerData?.newCount ??
+        queue.filter((o) => (o.stage || "accepted") === "accepted").length;
+    const readyCount =
+        ledgerData?.readyCount ??
+        queue.filter((o) => o.stage === "ready").length;
+    const inProgressCount =
+        ledgerData?.inProgressCount ??
+        queue.filter((o) => o.stage !== "collected").length;
 
     return (
         <div className="space-y-6">
+            {ordersMeta?.truncated && (
+                <TruncationNotice
+                    pagination={ordersMeta}
+                    shown={queue.length}
+                    label="active/recent orders in live queue (KPI totals above reflect all orders)"
+                />
+            )}
             <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
                     <h1 className="text-2xl font-extrabold">
@@ -820,10 +843,7 @@ export function VDashboard() {
 
             <div className="grid grid-cols-3 gap-2 sm:gap-3">
                 {[
-                    [
-                        "In the pot",
-                        queue.filter((o) => o.stage !== "collected").length,
-                    ],
+                    ["In the pot", inProgressCount],
                     ["Ready for pickup", readyCount],
                     ["This week", money(weekTotal)],
                 ].map(([l, v]) => (
@@ -1319,13 +1339,17 @@ export function VMenu() {
     const [adding, setAdding] = useState(false);
     const [editing, setEditing] = useState(null);
     const [saving, setSaving] = useState(false);
+    const [mealsMeta, setMealsMeta] = useState(null);
 
     useEffect(() => {
         let active = true;
         const fetchMeals = () => {
             api.myMeals()
                 .then((res) => {
-                    if (active) setDbItems(res || []);
+                    if (active) {
+                        setDbItems(res || []);
+                        setMealsMeta(res?._pagination || null);
+                    }
                 })
                 .catch(() => {})
                 .finally(() => {
@@ -1561,6 +1585,11 @@ export function VMenu() {
                     }
                 />
             )}
+            <TruncationNotice
+                pagination={mealsMeta}
+                shown={dbItems.length}
+                label="menu dishes"
+            />
 
             <Modal
                 open={adding}
@@ -1605,6 +1634,9 @@ export function VEarnings() {
     const released = ledger.data?.released ?? 0;
 
     const salesByDay = useMemo(() => {
+        if (Array.isArray(ledger.data?.salesByDay) && ledger.data.salesByDay.length) {
+            return ledger.data.salesByDay;
+        }
         const totals = {
             Mon: 0,
             Tue: 0,
@@ -1631,10 +1663,10 @@ export function VEarnings() {
             d,
             v: Math.round(totals[d] * 100) / 100,
         }));
-    }, [vendorOrders.data]);
+    }, [ledger.data?.salesByDay, vendorOrders.data]);
 
     const max = Math.max(0, ...salesByDay.map((s) => s.v));
-    const total = salesByDay.reduce((s, x) => s + x.v, 0);
+    const total = ledger.data?.weekTotal ?? salesByDay.reduce((s, x) => s + x.v, 0);
     const bestDay = max > 0 ? salesByDay.find((s) => s.v === max)?.d : "—";
 
     return (

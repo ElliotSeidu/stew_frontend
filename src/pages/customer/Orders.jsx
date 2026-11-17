@@ -5,12 +5,12 @@ import {
   Bell, CalendarClock, Check, ChefHat, CircleCheck, Copy, Lock,
   MessageSquare, Package, ReceiptText, ShoppingBasket, Star, Wallet,
 } from 'lucide-react'
-import { Badge, Button, Card, Chip, EmptyState, ErrorState, Field, Input, Modal, Price, Stars, Textarea } from '../../components/ui'
+import { Badge, Button, Card, Chip, EmptyState, ErrorState, Field, Input, Modal, Price, Stars, Textarea, TruncationNotice } from '../../components/ui'
 import { OrderCardSkeleton } from '../../components/cards'
 import { CANCEL_WINDOW, PICKUP_SLOTS, feeFor, niceDay } from '../../config'
 import { useCart, useToast } from '../../context/Providers'
 import { api } from '../../lib/api'
-import { useAsync } from '../../lib/hooks'
+import { useAsync, usePagedList } from '../../lib/hooks'
 import { PREP_STAGES, stageIndex } from '../../lib/mockData'
 import { notifyLocal } from '../../lib/push'
 import { payForOrder, settlePendingPayment } from '../../lib/payments'
@@ -122,7 +122,7 @@ function OrderThread({ order, from, onSent }) {
 
 export function Orders() {
   const [tab, setTab] = useState('active')
-  const orders = useAsync(() => api.orders(), [])
+  const orders = usePagedList((p) => api.orders(p), (o) => o.id)
   // Keep a ref to the latest retry so the polling interval never becomes stale
   const ordersRetryRef = useRef(orders.retry)
   useEffect(() => { ordersRetryRef.current = orders.retry }, [orders.retry])
@@ -136,6 +136,7 @@ export function Orders() {
       {orders.error ? <ErrorState onRetry={orders.retry} /> : orders.loading && !orders.data ? (
         <ul className="space-y-3">{[1, 2, 3].map((i) => <OrderCardSkeleton key={i} />)}</ul>
       ) : list.length ? (
+        <>
         <ul className="space-y-3">
           {list.map((o) => (
             <li key={o.id}>
@@ -160,6 +161,14 @@ export function Orders() {
             </li>
           ))}
         </ul>
+        <TruncationNotice
+          pagination={orders.pagination}
+          shown={(orders.data || []).length}
+          onLoadMore={orders.loadMore}
+          loadingMore={orders.loadingMore}
+          label="orders"
+        />
+        </>
       ) : <EmptyState icon={ReceiptText} title={tab === 'active' ? 'No active orders' : 'No past orders yet'} action={<Button to="/app/discover">Find food</Button>} />}
     </div>
   )

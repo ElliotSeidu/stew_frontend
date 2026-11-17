@@ -722,3 +722,31 @@ export function KitchenLogo({
         </span>
     );
 }
+
+export function TruncationNotice({
+    pagination,
+    shown = 0,
+    onLoadMore,
+    loadingMore = false,
+    label = "items",
+}) {
+    if (!pagination?.truncated) return null;
+    return (
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-brand/30 bg-brand-soft px-4 py-2.5 text-xs text-brand-strong">
+            <span>
+                Showing <strong>{shown}</strong> of{" "}
+                <strong>{pagination.total}</strong> {label}.
+            </span>
+            {onLoadMore && (
+                <Button
+                    size="sm"
+                    variant="outline"
+                    loading={loadingMore}
+                    onClick={onLoadMore}
+                >
+                    Load more
+                </Button>
+            )}
+        </div>
+    );
+}

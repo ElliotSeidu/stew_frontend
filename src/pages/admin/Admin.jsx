@@ -7,10 +7,11 @@ import {
     Switch,
     ErrorState,
     Stars,
+    TruncationNotice,
 } from "../../components/ui";
 import { useToast } from "../../context/Providers";
 import { api } from "../../lib/api";
-import { useAsync } from "../../lib/hooks";
+import { useAsync, usePagedList } from "../../lib/hooks";
 import { PREP_STAGES, stageIndex } from "../../lib/mockData";
 import { money, timeAgo } from "../../lib/utils";
 import { niceDay } from "../../config";
@@ -29,19 +30,33 @@ export function AOverview() {
         return d.getTime();
     });
     const ordersToday = useMemo(
-        () => (orders.data || []).filter((o) => (o.createdAt || 0) >= todayStart).length,
-        [orders.data, todayStart]
+        () =>
+            ledger.data?.ordersToday ??
+            (orders.data || []).filter((o) => (o.createdAt || 0) >= todayStart).length,
+        [ledger.data?.ordersToday, orders.data, todayStart]
     );
     const activeVendorsCount = useMemo(
-        () => (vendors.data || []).filter((v) => v.active !== false).length,
-        [vendors.data]
+        () =>
+            ledger.data?.activeVendorsCount ??
+            (vendors.data || []).filter((v) => v.active !== false).length,
+        [ledger.data?.activeVendorsCount, vendors.data]
     );
     const pendingVendorsCount = useMemo(
-        () => (vendors.data || []).filter((v) => v.active === false).length,
-        [vendors.data]
+        () =>
+            ledger.data?.pendingVendorsCount ??
+            (vendors.data || []).filter((v) => v.active === false).length,
+        [ledger.data?.pendingVendorsCount, vendors.data]
     );
     const openDisputes = cases.data || [];
-    const highPriorityCount = openDisputes.filter((d) => d.priority === "high").length;
+    const openDisputesCount = ledger.data?.openDisputesCount ?? openDisputes.length;
+    const highPriorityCount =
+        ledger.data?.highPriorityDisputesCount ??
+        openDisputes.filter((d) => d.priority === "high").length;
+    const anyTruncated = Boolean(
+        orders.data?._pagination?.truncated ||
+        vendors.data?._pagination?.truncated ||
+        cases.data?._pagination?.truncated
+    );
 
     return (
         <div className="space-y-6">
@@ -50,11 +65,16 @@ export function AOverview() {
                 Live control plane. Privileged operations are recorded in the
                 audit log.
             </p>
+            {anyTruncated && (
+                <div className="rounded-2xl border border-brand/30 bg-brand-soft px-4 py-2.5 text-xs text-brand-strong">
+                    KPI totals reflect full database counts; open individual tabs to page beyond the first 200 items.
+                </div>
+            )}
             <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
                 {[
                     ["Orders today", ordersToday],
                     ["Active vendors", activeVendorsCount],
-                    ["Open disputes", openDisputes.length],
+                    ["Open disputes", openDisputesCount],
                     ["Suspended / pending kitchens", pendingVendorsCount],
                 ].map(([l, v]) => (
                     <Card key={l}>
@@ -103,7 +123,7 @@ export function AOverview() {
 export function AVendors() {
     const toast = useToast();
     const [tab, setTab] = useState("active");
-    const vendors = useAsync(() => api.adminVendors(), []);
+    const vendors = usePagedList((p) => api.adminVendors(p), (v) => v.id);
 
     const allVendors = vendors.data || [];
     const pending = allVendors.filter((v) => v.active === false);
@@ -239,13 +259,20 @@ export function AVendors() {
                     text="Kitchens will appear here once student chefs set up their kitchens."
                 />
             )}
+            <TruncationNotice
+                pagination={vendors.pagination}
+                shown={(vendors.data || []).length}
+                onLoadMore={vendors.loadMore}
+                loadingMore={vendors.loadingMore}
+                label="vendors"
+            />
         </div>
     );
 }
 
 export function AOrders() {
     const toast = useToast();
-    const orders = useAsync(() => api.orders(), []);
+    const orders = usePagedList((p) => api.orders(p), (o) => o.id);
     const [filter, setFilter] = useState("all");
 
     const list = useMemo(() => {
@@ -437,6 +464,13 @@ export function AOrders() {
                     text="Orders will appear here as students transact."
                 />
             )}
+            <TruncationNotice
+                pagination={orders.pagination}
+                shown={(orders.data || []).length}
+                onLoadMore={orders.loadMore}
+                loadingMore={orders.loadingMore}
+                label="orders"
+            />
         </div>
     );
 }
@@ -878,7 +912,7 @@ export function APayouts() {
 }
 
 export function AAudit() {
-    const audit = useAsync(() => api.auditLogs(), []);
+    const audit = usePagedList((p) => api.auditLogs(p), (e) => e.id);
     const logs = audit.data || [];
 
     return (
@@ -937,13 +971,20 @@ export function AAudit() {
                     text="System actions will be recorded here."
                 />
             )}
+            <TruncationNotice
+                pagination={audit.pagination}
+                shown={logs.length}
+                onLoadMore={audit.loadMore}
+                loadingMore={audit.loadingMore}
+                label="audit events"
+            />
         </div>
     );
 }
 
 export function AUsers() {
     const toast = useToast();
-    const users = useAsync(() => api.adminUsers(), []);
+    const users = usePagedList((p) => api.adminUsers(p), (u) => u.id);
     const list = users.data || [];
 
     const toggleActive = async (u, nextActive) => {
@@ -1008,6 +1049,13 @@ export function AUsers() {
                     text="Registered student accounts will appear here."
                 />
             )}
+            <TruncationNotice
+                pagination={users.pagination}
+                shown={list.length}
+                onLoadMore={users.loadMore}
+                loadingMore={users.loadingMore}
+                label="users"
+            />
         </div>
     );
 }

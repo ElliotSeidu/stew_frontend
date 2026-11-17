@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { CupSoda, Flame, Search, SearchX, SlidersHorizontal, Soup, Utensils, Wheat, X } from 'lucide-react'
-import { Button, Card, EmptyState, ErrorState, Select } from '../../components/ui'
+import { Button, Card, EmptyState, ErrorState, Select, TruncationNotice } from '../../components/ui'
 import { MealCard, MealCardSkeleton, useTray } from '../../components/cards'
 import { api } from '../../lib/api'
-import { useAsync } from '../../lib/hooks'
+import { usePagedList } from '../../lib/hooks'
 import { CAMPUS } from '../../config'
 import { read, write, money } from '../../lib/utils'
 
@@ -28,7 +28,7 @@ export default function Discover() {
   const [sort, setSort] = useState('relevance')
   const [recent, setRecent] = useState(() => read('stew.recent', []))
   const { add, openDetail, modal } = useTray()
-  const meals = useAsync(() => api.meals(), [])
+  const meals = usePagedList((p) => api.meals(p), (m) => m.id)
   const prices = (meals.data || []).map((m) => m.price)
   const priceCeiling = prices.length ? Math.ceil(Math.max(...prices) / 5) * 5 : 60
 
@@ -262,6 +262,7 @@ export default function Discover() {
               ))}
             </div>
           ) : results.length ? (
+            <>
             <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-3">
               {results.map((m) => (
                 <MealCard
@@ -272,6 +273,14 @@ export default function Discover() {
                 />
               ))}
             </div>
+            <TruncationNotice
+              pagination={meals.pagination}
+              shown={(meals.data || []).length}
+              onLoadMore={meals.loadMore}
+              loadingMore={meals.loadingMore}
+              label="dishes"
+            />
+            </>
           ) : (
             <EmptyState
               icon={SearchX}
