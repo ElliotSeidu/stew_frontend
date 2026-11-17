@@ -32,13 +32,28 @@ export function useAsync(fn, deps = []) {
 export function usePagedList(fetcher, getKey = (item) => item?.id) {
   const fetcherRef = useRef(fetcher)
   const keyRef = useRef(getKey)
-  fetcherRef.current = fetcher
-  keyRef.current = getKey
   const [s, setS] = useState({ data: null, loading: true, loadingMore: false, error: null })
   const stateRef = useRef(s)
-  stateRef.current = s
 
-  const retry = useCallback((silent = false) => {
+  useEffect(() => {
+    fetcherRef.current = fetcher
+    keyRef.current = getKey
+    stateRef.current = s
+  })
+
+  useEffect(() => {
+    let active = true
+    fetcherRef.current({ offset: 0 })
+      .then((data) => {
+        if (active) setS({ data, loading: false, loadingMore: false, error: null })
+      })
+      .catch((error) => {
+        if (active) setS((x) => ({ ...x, loading: false, loadingMore: false, error }))
+      })
+    return () => { active = false }
+  }, [])
+
+  const retry = useCallback((silent = true) => {
     const prev = stateRef.current.data
     const prevCount = Array.isArray(prev) ? prev.length : 0
     if (!silent) {
@@ -55,8 +70,6 @@ export function usePagedList(fetcher, getKey = (item) => item?.id) {
         throw error
       })
   }, [])
-
-  useEffect(() => { retry() }, [retry])
 
   const loadMore = useCallback(() => {
     const current = stateRef.current.data || []
@@ -88,7 +101,7 @@ export function usePagedList(fetcher, getKey = (item) => item?.id) {
   return {
     ...s,
     pagination: s.data?._pagination || null,
-    retry: (silent = true) => retry(silent),
+    retry,
     loadMore,
   }
 }
