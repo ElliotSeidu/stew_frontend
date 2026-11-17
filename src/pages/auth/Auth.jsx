@@ -22,7 +22,7 @@ const RootError = ({ error }) => error ? <p role="alert" className="rounded-lg b
 
 function defaultHomeFor(u, wantsVendor = false) {
   if (!u) return '/app/login'
-  if (u.isAdmin || u.role === 'admin') return '/app/admin'
+  if (u.isAdmin) return '/app/admin'
   const isSelling = u.isVendor || u.role === 'vendor' || u.accountType === 'vendor' || u.accountType === 'both' || wantsVendor
   if (isSelling) {
     const needsSetup = wantsVendor || !u.kitchenName || !u.vendorId
@@ -191,7 +191,7 @@ function useGoHome() {
   const loc = useLocation()
   const newVendor = !!loc.state?.wantsVendor
   return (u) => {
-    if (u.isAdmin || u.role === 'admin') return nav('/app/admin', { replace: true })
+    if (u.isAdmin) return nav('/app/admin', { replace: true })
     if (u.accountType === 'vendor' || u.accountType === 'both' || u.isVendor || u.role === 'vendor') {
       if (u.accountType === 'both' && loc.state?.from && !loc.state.from.startsWith('/app/login')) {
         return nav(loc.state.from, { replace: true })

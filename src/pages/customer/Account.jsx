@@ -144,7 +144,7 @@ export function Account() {
   const initials = (user?.fullName || '?').split(' ').map((s) => s[0]).slice(0, 2).join('').toUpperCase()
   const row = 'flex items-center justify-between rounded-2xl px-3.5 py-3 text-sm font-bold hover:bg-sunken transition'
 
-  const isAdmin = user?.isAdmin || user?.role === 'admin'
+  const isAdmin = Boolean(user?.isAdmin)
 
   const handleDelete = async () => {
     if (isAdmin) {
@@ -194,7 +194,7 @@ export function Account() {
           : !isAdmin
             ? <Link to="/app/vendor/apply" className={row}><span className="flex items-center gap-2"><Store className="h-4 w-4" />Start selling on STEW</span><ChevronRight className="h-4 w-4" /></Link>
             : null}
-        {(user?.isAdmin || user?.role === 'admin') && <Link to="/app/admin" className={row}><span className="flex items-center gap-2"><ShieldCheck className="h-4 w-4" />Admin console</span><ChevronRight className="h-4 w-4" /></Link>}
+        {isAdmin && <Link to="/app/admin" className={row}><span className="flex items-center gap-2"><ShieldCheck className="h-4 w-4" />Admin console</span><ChevronRight className="h-4 w-4" /></Link>}
       </Card>
       <Card className="p-2">
         {NAV_DOCS.map((d) => <Link key={d.slug} to={`/app/legal/${d.slug}`} className={row}>{d.title}<ChevronRight className="h-4 w-4" /></Link>)}

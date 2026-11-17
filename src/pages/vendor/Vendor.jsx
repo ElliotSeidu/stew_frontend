@@ -104,7 +104,7 @@ export function Apply() {
                 auth.updateUser({
                     ...auth.user,
                     isVendor: true,
-                    role: auth.user.role === "admin" ? "admin" : "vendor",
+                    role: auth.user.isAdmin ? auth.user.role : "vendor",
                     accountType: nextAccountType,
                     kitchenName: d.kitchen,
                     hall: d.hall,

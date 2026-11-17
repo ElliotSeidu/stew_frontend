@@ -987,7 +987,7 @@ export function AUsers() {
                                         <Badge>{u.role}</Badge>
                                     </td>
                                     <td className="p-3">
-                                        {u.role === "admin" ? (
+                                        {u.isAdmin ? (
                                             <Badge tone="brand">Protected Admin</Badge>
                                         ) : (
                                             <Switch

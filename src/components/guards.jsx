@@ -8,7 +8,7 @@ import { useAuth } from "../context/Providers";
 // So a vendor also satisfies a customer-only route, which is what lets a chef order
 // from another chef without a second account.
 const satisfies = (user, role) => {
-    const isAdmin = user.isAdmin === true || user.role === "admin";
+    const isAdmin = user.isAdmin === true;
     if (role === "customer") {
         // Admin cannot access customer pages or order food
         if (isAdmin) return false;

@@ -118,7 +118,7 @@ function AuthProvider({ children }) {
     // A vendor account can also order food, and a customer can apply to start selling.
     // These flags are what the route guard and the Account screen read.
     isVendor: !!(user?.isVendor || user?.role === 'vendor'),
-    isAdmin: !!(user?.isAdmin || user?.role === 'admin'),
+    isAdmin: Boolean(user?.isAdmin),
     becomeVendor: () => {
       const u = sanitizeCachedUser({ ...read('stew.me'), isVendor: true, role: 'vendor' })
       write('stew.me', u)

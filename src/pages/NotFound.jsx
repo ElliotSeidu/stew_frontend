@@ -7,7 +7,7 @@ export default function NotFound() {
     const homePath =
         user?.accountType === "vendor"
             ? "/app/vendor"
-            : user?.isAdmin || user?.role === "admin"
+            : user?.isAdmin
               ? "/app/admin"
               : "/app";
     return (
