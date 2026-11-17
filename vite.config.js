@@ -1,9 +1,27 @@
-import { defineConfig } from 'vite'
+import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { VitePWA } from 'vite-plugin-pwa'
 
-export default defineConfig({
+function enforceApiUrlPlugin(command, mode) {
+  return {
+    name: 'enforce-production-api-url',
+    configResolved() {
+      if (command !== 'build') return
+      const env = loadEnv(mode, process.cwd(), '')
+      const apiUrl = (process.env.VITE_API_URL ?? env.VITE_API_URL ?? '').trim()
+      const useMock = (process.env.VITE_USE_MOCK ?? env.VITE_USE_MOCK ?? '').trim() === 'true'
+      if (!apiUrl && !useMock) {
+        throw new Error(
+          '[STEW BUILD ERROR] VITE_API_URL is missing. Vite bakes VITE_API_URL into the static bundle at BUILD time; ' +
+          'pass VITE_API_URL=https://<api-host>/api when running `npm run build` (without it the built app fails with 503).'
+        )
+      }
+    },
+  }
+}
+
+export default defineConfig(({ command, mode }) => ({
   build: {
     sourcemap: false,
   },
@@ -15,6 +33,7 @@ export default defineConfig({
     },
   },
   plugins: [
+    enforceApiUrlPlugin(command, mode),
     react(),
     tailwindcss(),
     VitePWA({
@@ -44,4 +63,4 @@ export default defineConfig({
       },
     }),
   ],
-})
+}))

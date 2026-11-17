@@ -1,3 +1,25 @@
+# STEW Frontend (React + Vite PWA)
+
+## Important: `VITE_API_URL` Must Be Set at Build Time
+
+Vite bakes all `VITE_*` variables into the static JavaScript bundle during `npm run build` (`vite build`), **not** at container/web-server runtime.
+
+If `VITE_API_URL` is missing or empty, `npm run build` now fails immediately instead of shipping a bundle that throws `503 Service configuration error: VITE_API_URL is not set`.
+
+```bash
+# Example production build
+VITE_API_URL=https://api.stew.knust.edu.gh/api npm run build
+```
+
+On Windows PowerShell:
+
+```powershell
+$env:VITE_API_URL = 'https://api.stew.knust.edu.gh/api'
+npm run build
+```
+
+Never put secret keys (`PAYSTACK_SECRET_KEY`, `SECRET_KEY`) in any `VITE_*` variable — they are embedded publicly in `dist/`.
+
 # React + Vite
 
 This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
