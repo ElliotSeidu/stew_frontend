@@ -90,10 +90,9 @@ class ChunkErrorBoundary extends Component {
         return { hasError: true };
     }
 
-    componentDidUpdate(prevProps) {
-        if (this.state.hasError && prevProps.resetKey !== this.props.resetKey) {
+    componentWillUnmount() {
+        if (this.state.hasError) {
             resetFailedChunks();
-            this.setState({ hasError: false });
         }
     }
 
@@ -185,7 +184,7 @@ export default function App() {
     return (
         <>
             <RouteTracker />
-            <ChunkErrorBoundary resetKey={pathname}>
+            <ChunkErrorBoundary key={pathname}>
                 <Suspense fallback={<RouteFallback />}>
                     <Routes>
                 <Route path="/" element={<Root />} />
