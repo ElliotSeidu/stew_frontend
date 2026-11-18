@@ -9,6 +9,9 @@ export const MOCK = !import.meta.env.PROD && (import.meta.env.VITE_USE_MOCK === 
 if (import.meta.env.PROD && !BASE) {
   console.error('[STEW] CRITICAL: VITE_API_URL is not set in a production build. Refusing to fall back to mock data.')
 }
+if (MOCK) {
+  console.warn('[STEW] Running in MOCK mode (localStorage stub) — no live backend requests will be sent. Set VITE_API_URL to connect to the Django API.')
+}
 if (typeof window !== 'undefined' && import.meta.env.PROD && window.location.protocol === 'https:' && BASE.startsWith('http://')) {
   console.warn('[STEW] Mixed content warning: HTTPS frontend is calling an insecure HTTP API URL. Configure VITE_API_URL with HTTPS.')
 }
