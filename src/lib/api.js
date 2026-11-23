@@ -32,7 +32,16 @@ async function http(path, { method = 'GET', body } = {}) {
       signal: controller.signal,
     })
     const data = await res.json().catch(() => ({}))
-    if (!res.ok) throw Object.assign(new Error(data.detail || data.message || 'Something went wrong'), { code: data.code, status: res.status, fields: data.errors })
+    if (!res.ok) {
+      if (res.status === 401 && token && typeof window !== 'undefined') {
+        window.dispatchEvent(
+          new CustomEvent('stew:unauthorized', {
+            detail: { message: data.detail || data.message || 'Your session has expired. Please log in again.' },
+          })
+        )
+      }
+      throw Object.assign(new Error(data.detail || data.message || 'Something went wrong'), { code: data.code, status: res.status, fields: data.errors })
+    }
     const totalHdr = res.headers.get('X-Total-Count')
     if (Array.isArray(data) && totalHdr !== null) {
       Object.defineProperty(data, '_pagination', {

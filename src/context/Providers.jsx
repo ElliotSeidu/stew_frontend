@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { api } from '../lib/api'
 import { read, write, uid } from '../lib/utils'
 
@@ -84,6 +84,8 @@ function sanitizeCachedUser(u) {
 
 function AuthProvider({ children }) {
   const [user, setUser] = useState(() => read('stew.me'))
+  const toast = useToast()
+  const handling401Ref = useRef(false)
   useEffect(() => {
     if (localStorage.getItem('stew.token')) {
       api.me().then((u) => {
@@ -93,7 +95,20 @@ function AuthProvider({ children }) {
       }).catch(() => {})
     }
   }, [])
+  useEffect(() => {
+    const onUnauthorized = () => {
+      if (!localStorage.getItem('stew.token') || handling401Ref.current) return
+      handling401Ref.current = true
+      Object.keys(localStorage).filter((k) => k.startsWith('stew.')).forEach((k) => localStorage.removeItem(k))
+      setUser(null)
+      toast('Session expired or account suspended. Please log in again.', 'bad')
+      setTimeout(() => { handling401Ref.current = false }, 1500)
+    }
+    window.addEventListener('stew:unauthorized', onUnauthorized)
+    return () => window.removeEventListener('stew:unauthorized', onUnauthorized)
+  }, [toast])
   const start = (r) => {
+    handling401Ref.current = false
     localStorage.setItem('stew.token', r.access)
     const cached = sanitizeCachedUser(r.user)
     write('stew.me', cached)
