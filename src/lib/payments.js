@@ -62,6 +62,84 @@ function loadSdk() {
 
 export const paymentReady = () => MOCK || !!PAYSTACK_PUBLIC_KEY
 
+function openMockPaystackModal({ order, reference, amount, currency }) {
+  return new Promise((resolve, reject) => {
+    const existing = document.querySelector('[data-testid="mock-paystack-modal"]')
+    if (existing) existing.remove()
+
+    const overlay = document.createElement('div')
+    overlay.setAttribute('role', 'dialog')
+    overlay.setAttribute('aria-modal', 'true')
+    overlay.setAttribute('aria-label', 'Paystack Test Checkout')
+    overlay.setAttribute('data-testid', 'mock-paystack-modal')
+    overlay.style.cssText = 'position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.65);padding:16px;'
+
+    const card = document.createElement('div')
+    card.style.cssText = 'width:100%;max-width:400px;border-radius:20px;background:#ffffff;color:#111827;padding:24px;box-shadow:0 24px 60px rgba(0,0,0,0.35);font-family:system-ui,-apple-system,sans-serif;'
+
+    const badge = document.createElement('div')
+    badge.textContent = 'PAYSTACK TEST MODE (LOCAL DEV ONLY)'
+    badge.style.cssText = 'display:inline-block;padding:4px 10px;border-radius:999px;background:#e0f2fe;color:#0369a1;font-size:11px;font-weight:700;letter-spacing:0.04em;margin-bottom:12px;'
+
+    const title = document.createElement('h2')
+    title.textContent = `Pay GH₵ ${(Number(amount || 0) / 100).toFixed(2)}`
+    title.style.cssText = 'margin:0 0 6px 0;font-size:22px;font-weight:800;'
+
+    const meta = document.createElement('p')
+    meta.textContent = `Order ${order.id} · ${currency || 'GHS'} · Ref ${reference}`
+    meta.style.cssText = 'margin:0 0 18px 0;font-size:13px;color:#4b5563;word-break:break-word;'
+
+    const actions = document.createElement('div')
+    actions.style.cssText = 'display:flex;flex-direction:column;gap:10px;'
+
+    const payBtn = document.createElement('button')
+    payBtn.type = 'button'
+    payBtn.textContent = 'Complete mock payment'
+    payBtn.setAttribute('data-testid', 'mock-pay-confirm')
+    payBtn.style.cssText = 'height:44px;border:0;border-radius:999px;background:#0891b2;color:#ffffff;font-size:14px;font-weight:700;cursor:pointer;'
+
+    const closeBtn = document.createElement('button')
+    closeBtn.type = 'button'
+    closeBtn.textContent = 'Close without paying'
+    closeBtn.setAttribute('data-testid', 'mock-pay-close')
+    closeBtn.style.cssText = 'height:42px;border:1px solid #d1d5db;border-radius:999px;background:#ffffff;color:#374151;font-size:14px;font-weight:600;cursor:pointer;'
+
+    let settled = false
+    const cleanup = () => {
+      window.removeEventListener('keydown', onKey)
+      window.removeEventListener('popstate', onPop)
+      overlay.remove()
+    }
+    const dismiss = () => {
+      if (settled) return
+      settled = true
+      cleanup()
+      reject(Object.assign(new Error('Payment window was closed before completing.'), { code: 'closed' }))
+    }
+    const confirm = () => {
+      if (settled) return
+      settled = true
+      payBtn.disabled = true
+      closeBtn.disabled = true
+      cleanup()
+      resolve()
+    }
+    const onKey = (e) => { if (e.key === 'Escape') dismiss() }
+    const onPop = () => dismiss()
+
+    window.addEventListener('keydown', onKey)
+    window.addEventListener('popstate', onPop)
+    payBtn.addEventListener('click', confirm)
+    closeBtn.addEventListener('click', dismiss)
+
+    actions.append(payBtn, closeBtn)
+    card.append(badge, title, meta, actions)
+    overlay.appendChild(card)
+    document.body.appendChild(overlay)
+    payBtn.focus()
+  })
+}
+
 /**
  * Start a payment for an order and resolve once it is paid.
  * Throws with a readable message on any failure; the caller shows it to the student.
@@ -74,10 +152,15 @@ export async function payForOrder(order, { onStatus } = {}) {
   const reference = init.reference || init.data?.reference
   if (!reference) throw new Error('The payment could not be started. Please try again.')
 
-  // When running in mock mode or local dev without live Paystack keys, simulate Paystack inline approval on the spot
+  // When running in mock mode or local dev without live Paystack keys, open interactive dev checkout dialog
   if (init.mock || (MOCK && !init.access_code && !init.data?.access_code)) {
     say('awaiting-approval')
-    await new Promise((r) => setTimeout(r, 700))
+    await openMockPaystackModal({
+      order,
+      reference,
+      amount: init.amount ?? Math.round(Number(order.total) * 100),
+      currency: init.currency || 'GHS',
+    })
     say('verifying')
     return api.verifyPayment({ orderId: order.id, reference })
   }

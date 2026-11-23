@@ -105,36 +105,41 @@ export function Checkout() {
   const total = pendingOrder ? pendingOrder.total : subtotal + fee
 
   const onSubmit = async (d) => {
+    let createdOrder = pendingOrder
     try {
-      const order = pendingOrder || await api.createOrder({
-        vendorId: cart.vendorId,
-        vendorName,
-        email: user?.email,
-        lines: cart.lines.map((l) => ({ mealId: l.meal.id, name: l.meal.name, price: l.meal.price, qty: l.qty, note: l.note })),
-        area: d.area,
-        contactNote: d.contactNote,
-        phone: d.phone,
-        // batch cooking: the chef cooks towards this day
-        pickupDay: d.pickupDay,
-        pickupSlot: d.pickupSlot,
-        orderNote: d.note,
-        subtotal,
-      })
-      if (!pendingOrder) {
-        setPendingOrder(order)
-        track('order_placed')
-      }
-      const res = await payForOrder(order, { onStatus: setPayStage })
-      if (res?.pending) {
+      if (!createdOrder) {
+        createdOrder = await api.createOrder({
+          vendorId: cart.vendorId,
+          vendorName,
+          email: user?.email,
+          lines: cart.lines.map((l) => ({ mealId: l.meal.id, name: l.meal.name, price: l.meal.price, qty: l.qty, note: l.note })),
+          area: d.area,
+          contactNote: d.contactNote,
+          phone: d.phone,
+          // batch cooking: the chef cooks towards this day
+          pickupDay: d.pickupDay,
+          pickupSlot: d.pickupSlot,
+          orderNote: d.note,
+          subtotal,
+        })
+        setPendingOrder(createdOrder)
         clear()
+      }
+      const res = await payForOrder(createdOrder, { onStatus: setPayStage })
+      if (res?.pending) {
         return
       }
-      clear()
+      track('order_placed')
       toast('Payment received! STEW is holding your payment until you collect your meal.')
-      nav(`/app/orders/${order.id}?paid=1`, { replace: true })
+      nav(`/app/orders/${createdOrder.id}?paid=1`, { replace: true })
     } catch (e) {
       setPayStage(null)
       if (e.code === 'closed') {
+        if (createdOrder?.id) {
+          toast('Order saved — complete payment to send it to the kitchen.')
+          nav(`/app/orders/${createdOrder.id}`, { replace: true })
+          return
+        }
         setError('root', { message: 'Payment window was closed. Click the button below to complete your Paystack payment.' })
       } else {
         setError('root', { message: e.message })
@@ -210,14 +215,22 @@ export function Checkout() {
       <div className="space-y-4 md:pt-12">
         <Card>
           <p className="text-xs font-semibold text-ink-3">Cooking for you</p>
-          <p className="font-bold">{vendorName}</p>
+          <p className="font-bold">{pendingOrder?.vendorName || vendorName}</p>
           <ul className="mt-1 space-y-1 text-sm text-ink-2">
-            {cart.lines.map((l) => <li key={l.meal.id}>{l.qty}× {l.meal.name}</li>)}
+            {(pendingOrder?.lines || cart.lines).map((l) => <li key={l.mealId || l.meal?.id}>{l.qty}× {l.name || l.meal?.name}</li>)}
           </ul>
         </Card>
-        <Summary subtotal={subtotal} />
+        <Summary subtotal={pendingOrder?.subtotal ?? subtotal} />
         {errors.root && <p role="alert" className="rounded-lg bg-bad-soft p-3 text-sm font-medium text-bad">{errors.root.message}</p>}
-        <Button type="submit" size="lg" className="w-full" loading={isSubmitting} disabled={!safetyOk}>
+        {pendingOrder && (
+          <div className="rounded-lg border border-warn/40 bg-warn-soft p-3 text-xs text-warn space-y-2">
+            <p className="font-semibold">Order {pendingOrder.id} is saved as Awaiting payment.</p>
+            <div className="flex flex-wrap gap-2">
+              <Link to={`/app/orders/${pendingOrder.id}`} className="font-bold underline">View order · Pay or Cancel</Link>
+            </div>
+          </div>
+        )}
+        <Button type="submit" size="lg" className="w-full" loading={isSubmitting} disabled={!safetyOk || isSubmitting}>
           {payStage === 'verifying'
             ? 'Confirming Paystack payment…'
             : payStage === 'awaiting-approval'

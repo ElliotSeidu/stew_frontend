@@ -10,6 +10,7 @@ import { OrderCardSkeleton } from '../../components/cards'
 import { CANCEL_WINDOW, PICKUP_SLOTS, feeFor, niceDay } from '../../config'
 import { useCart, useToast } from '../../context/Providers'
 import { api } from '../../lib/api'
+import { track } from '../../lib/analytics'
 import { useAsync, usePagedList } from '../../lib/hooks'
 import { PREP_STAGES, stageIndex } from '../../lib/mockData'
 import { notifyLocal } from '../../lib/push'
@@ -27,7 +28,7 @@ const MSG = {
   cancelled: 'Order cancelled',
 }
 const PAY_LABEL = {
-  pending: 'Not paid',
+  pending: 'Awaiting payment',
   paid: 'Held by STEW',
   released: 'Released to the chef',
   refund_pending: 'Refund pending',
@@ -40,6 +41,15 @@ const slotLabel = (id) => PICKUP_SLOTS.find((s) => s.id === id)?.label
 
 const payStatus = (o) => o?.payment?.status || 'pending'
 const orderStage = (o) => o?.prepStage || 'accepted'
+const paymentExpiresAt = (o) => o?.payment?.expiresAt || (o?.createdAt ? o.createdAt + 30 * 60 * 1000 : null)
+const formatTimeLeft = (expiresAt, nowMs = Date.now()) => {
+  if (!expiresAt) return null
+  const secs = Math.max(0, Math.floor((expiresAt - nowMs) / 1000))
+  if (secs <= 0) return 'Expiring soon'
+  const mins = Math.floor(secs / 60)
+  const rem = secs % 60
+  return mins > 0 ? `${mins}m ${String(rem).padStart(2, '0')}s left to pay` : `${rem}s left to pay`
+}
 
 /* The student's window into the pot: the same five steps the chef taps through. */
 const STAGE_ICON = { accepted: Check, shopping: ShoppingBasket, cooking: ChefHat, packing: Package, ready: Bell, collected: CircleCheck }
@@ -122,12 +132,29 @@ function OrderThread({ order, from, onSent }) {
 
 export function Orders() {
   const [tab, setTab] = useState('active')
+  const toast = useToast()
+  const nav = useNavigate()
+  const [cancellingId, setCancellingId] = useState(null)
   const orders = usePagedList((p) => api.orders(p), (o) => o.id)
   // Keep a ref to the latest retry so the polling interval never becomes stale
   const ordersRetryRef = useRef(orders.retry)
   useEffect(() => { ordersRetryRef.current = orders.retry }, [orders.retry])
   // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional polling; uses ref for stability
   useEffect(() => { const t = setInterval(() => ordersRetryRef.current(true), 4000); return () => clearInterval(t) }, [])
+  const cancelUnpaid = async (e, id) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setCancellingId(id)
+    try {
+      await api.cancelOrder(id)
+      toast('Unpaid order cancelled')
+      orders.retry(true)
+    } catch (err) {
+      toast(err.message, 'bad')
+    } finally {
+      setCancellingId(null)
+    }
+  }
   const list = (orders.data || []).filter((o) => (tab === 'active') === !finished(o.status))
   return (
     <div className="mx-auto max-w-2xl space-y-4">
@@ -138,28 +165,54 @@ export function Orders() {
       ) : list.length ? (
         <>
         <ul className="space-y-3">
-          {list.map((o) => (
-            <li key={o.id}>
-              <Link to={`/app/orders/${o.id}`} className="block rounded-3xl border border-line/70 bg-surface p-5 shadow-xs transition hover:border-brand/40 hover:bg-surface hover:shadow-md">
-                <div className="flex items-center justify-between gap-2">
-                  <span className="num text-sm font-bold">{o.id}</span>
-                  <span className="flex gap-1">
-                    <Badge tone={PAY_TONE[payStatus(o)]}>{PAY_LABEL[payStatus(o)]}</Badge>
-                    <Badge tone={TONE[o.status]}>{LABEL[o.status]}</Badge>
-                  </span>
-                </div>
-                <p className="mt-1 font-bold">{o.vendorName}</p>
-                <p className="truncate text-sm text-ink-2">{o.lines.map((l) => `${l.qty}× ${l.name}`).join(', ')}</p>
-                <div className="mt-2 flex items-center justify-between text-xs text-ink-3">
-                  <span className="inline-flex items-center gap-1"><CalendarClock className="h-3.5 w-3.5" />{niceDay(o.pickupDay)}</span>
-                  <Price v={o.total} className="text-sm text-ink" />
-                </div>
-                <p className="mt-1 text-xs font-semibold text-brand-strong">
-                  {PREP_STAGES[stageIndex(orderStage(o))].label}
-                </p>
-              </Link>
-            </li>
-          ))}
+          {list.map((o) => {
+            const awaitingPay = payStatus(o) === 'pending' && o.status !== 'cancelled'
+            const expText = awaitingPay ? formatTimeLeft(paymentExpiresAt(o)) : null
+            return (
+              <li key={o.id}>
+                <Link to={`/app/orders/${o.id}`} className="block rounded-3xl border border-line/70 bg-surface p-5 shadow-xs transition hover:border-brand/40 hover:bg-surface hover:shadow-md">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="num text-sm font-bold">{o.id}</span>
+                    <span className="flex gap-1">
+                      <Badge tone={PAY_TONE[payStatus(o)]}>{PAY_LABEL[payStatus(o)]}</Badge>
+                      {!awaitingPay && <Badge tone={TONE[o.status]}>{LABEL[o.status]}</Badge>}
+                    </span>
+                  </div>
+                  <p className="mt-1 font-bold">{o.vendorName}</p>
+                  <p className="truncate text-sm text-ink-2">{o.lines.map((l) => `${l.qty}× ${l.name}`).join(', ')}</p>
+                  <div className="mt-2 flex items-center justify-between text-xs text-ink-3">
+                    <span className="inline-flex items-center gap-1"><CalendarClock className="h-3.5 w-3.5" />{niceDay(o.pickupDay)}</span>
+                    <Price v={o.total} className="text-sm text-ink" />
+                  </div>
+                  {awaitingPay ? (
+                    <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-line/60 pt-2.5">
+                      <span className="text-xs font-semibold text-warn">{expText || 'Awaiting payment'}</span>
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          onClick={(e) => { e.preventDefault(); e.stopPropagation(); nav(`/app/orders/${o.id}`) }}
+                        >
+                          Pay
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          loading={cancellingId === o.id}
+                          onClick={(e) => cancelUnpaid(e, o.id)}
+                        >
+                          Cancel
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="mt-1 text-xs font-semibold text-brand-strong">
+                      {PREP_STAGES[stageIndex(orderStage(o))].label}
+                    </p>
+                  )}
+                </Link>
+              </li>
+            )
+          })}
         </ul>
         <TruncationNotice
           pagination={orders.pagination}
@@ -266,6 +319,7 @@ function CancelBox({ order, onDone }) {
     const t = setTimeout(() => setLeft((l) => l - 1), 1000)
     return () => clearTimeout(t)
   }, [left])
+  if (payStatus(order) === 'pending' && !order.cancelledAt && order.status !== 'cancelled') return null
   if (orderStage(order) !== 'accepted' || left <= 0) return null
   const cancel = async () => {
     setBusy(true)
@@ -333,12 +387,22 @@ export function OrderDetail() {
   const { data: o, error, retry } = useAsync(() => api.order(id), [id])
   const [paying, setPaying] = useState(false)
   const [payStage, setPayStage] = useState(null)
+  const [askCancelUnpaid, setAskCancelUnpaid] = useState(false)
+  const [cancellingUnpaid, setCancellingUnpaid] = useState(false)
+  const [nowTick, setNowTick] = useState(() => Date.now())
   const prev = useRef(null)
+
+  useEffect(() => {
+    if (!o || payStatus(o) !== 'pending' || o.status === 'cancelled') return
+    const t = setInterval(() => setNowTick(Date.now()), 1000)
+    return () => clearInterval(t)
+  }, [o])
 
   useEffect(() => {
     let alive = true
     settlePendingPayment().then((done) => {
       if (alive && done) {
+        track('order_placed')
         toast('Payment received! STEW is holding your payment until you collect your food.')
         retry()
       }
@@ -363,11 +427,12 @@ export function OrderDetail() {
   }, [o?.prepStage])
 
   const payNow = async () => {
-    if (!o) return
+    if (!o || paying) return
     setPaying(true)
     try {
       const res = await payForOrder(o, { onStatus: setPayStage })
       if (res?.pending) return
+      track('order_placed')
       toast('Payment received! STEW is holding your money until you receive your food.')
       retry()
     } catch (e) {
@@ -376,6 +441,23 @@ export function OrderDetail() {
     } finally {
       setPaying(false)
       setPayStage(null)
+    }
+  }
+
+  const cancelUnpaidOrder = async () => {
+    if (!o || cancellingUnpaid) return
+    setCancellingUnpaid(true)
+    try {
+      await api.cancelOrder(o.id)
+      toast('Order cancelled')
+      setAskCancelUnpaid(false)
+      retry()
+    } catch (e) {
+      toast(e.message, 'bad')
+      setAskCancelUnpaid(false)
+      retry()
+    } finally {
+      setCancellingUnpaid(false)
     }
   }
 
@@ -390,23 +472,40 @@ export function OrderDetail() {
   if (!o) return <OrderDetailSkeleton />
   const cancelled = o.status === 'cancelled'
   const ps = payStatus(o)
+  const awaitingPay = ps === 'pending' && !cancelled
+  const expText = awaitingPay ? formatTimeLeft(paymentExpiresAt(o), nowTick) : null
 
   return (
     <div className="mx-auto max-w-2xl space-y-4">
       <div className="flex items-center justify-between gap-2">
         <h1 className="text-2xl font-extrabold">Order <span className="num">{o.id}</span></h1>
-        <span className="flex gap-1"><Badge tone={PAY_TONE[ps]}>{PAY_LABEL[ps]}</Badge><Badge tone={TONE[o.status]}>{LABEL[o.status]}</Badge></span>
+        <span className="flex gap-1"><Badge tone={PAY_TONE[ps]}>{PAY_LABEL[ps]}</Badge>{!awaitingPay && <Badge tone={TONE[o.status]}>{LABEL[o.status]}</Badge>}</span>
       </div>
 
-      {ps === 'pending' && !cancelled && (
-        <Card className="flex flex-wrap items-center justify-between gap-3 border-warn/40 bg-warn-soft">
-          <div className="space-y-0.5">
-            <p className="text-sm font-semibold text-warn"><Lock className="mr-1 inline h-4 w-4" />Complete your Paystack payment to confirm this order</p>
-            <p className="text-xs text-warn">STEW holds your money in escrow until you receive your food.</p>
+      {awaitingPay && (
+        <Card data-testid="awaiting-payment-card" className="space-y-3 border-warn/40 bg-warn-soft">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="space-y-0.5">
+              <p className="text-sm font-semibold text-warn"><Lock className="mr-1 inline h-4 w-4" />Awaiting payment · {expText || 'Complete payment to send to kitchen'}</p>
+              <p className="text-xs text-warn">Your kitchen won&apos;t see this order until Paystack confirms your payment. STEW holds your money in escrow until collection.</p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Button size="sm" loading={paying} disabled={paying} onClick={payNow}>
+                {payStage === 'verifying' ? 'Confirming…' : payStage === 'awaiting-approval' ? 'Approve prompt…' : `Pay · ${money(o.total)}`}
+              </Button>
+              <Button size="sm" variant="outline" disabled={paying || cancellingUnpaid} onClick={() => setAskCancelUnpaid(true)}>
+                Cancel
+              </Button>
+            </div>
           </div>
-          <Button size="sm" loading={paying} onClick={payNow}>
-            {payStage === 'verifying' ? 'Confirming…' : payStage === 'awaiting-approval' ? 'Approve prompt…' : `Pay with Paystack · ${money(o.total)}`}
-          </Button>
+          <Modal
+            open={askCancelUnpaid}
+            onClose={() => setAskCancelUnpaid(false)}
+            title="Cancel this unpaid order?"
+            footer={<><Button variant="outline" onClick={() => setAskCancelUnpaid(false)}>Keep order</Button><Button variant="danger" loading={cancellingUnpaid} onClick={cancelUnpaidOrder}>Yes, cancel</Button></>}
+          >
+            <p className="text-sm text-ink-2">No payment has been taken. Cancelling immediately releases your reserved portions.</p>
+          </Modal>
         </Card>
       )}
       {sp.get('paid') === '1' && ps === 'paid' && (
@@ -450,10 +549,12 @@ export function OrderDetail() {
         </div>
         {cancelled
           ? <p className="text-center text-sm font-semibold text-bad">This order was cancelled.</p>
-          : <PrepTracker order={o} />}
+          : awaitingPay
+            ? <p className="text-center text-xs font-medium text-ink-2">Your order will be sent to {o.vendorName} as soon as payment is confirmed.</p>
+            : <PrepTracker order={o} />}
       </Card>
 
-      {!cancelled && <OrderThread order={o} from="student" onSent={retry} />}
+      {!cancelled && !awaitingPay && <OrderThread order={o} from="student" onSent={retry} />}
 
       <Card>
         <h2 className="font-bold">{o.vendorName}</h2>

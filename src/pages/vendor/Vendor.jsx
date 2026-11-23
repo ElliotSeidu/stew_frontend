@@ -616,17 +616,23 @@ export function VDashboard() {
             ]);
             setOrdersMeta(raw?._pagination || null);
             if (ledger) setLedgerData(ledger);
-            const activeOrders = (raw || [])
-                .filter((o) => o.status !== "cancelled" && !o.cancelledAt)
-                .map(normalizeVendorOrder);
+            const vendorOrders = (raw || []).map(normalizeVendorOrder);
 
             // Detect new orders, new student messages, or collection confirmations
             if (knownRef.current) {
-                activeOrders.forEach((o) => {
+                vendorOrders.forEach((o) => {
+                    const isCancelled = Boolean(o.cancelledAt || o.status === "cancelled");
                     const prev = knownRef.current.get(o.id);
                     if (!prev) {
-                        toast(`New order ${o.code} from ${o.customer}!`);
+                        if (isCancelled) {
+                            toast(`Order ${o.code} was cancelled.`);
+                        } else {
+                            toast(`New order ${o.code} from ${o.customer}!`);
+                        }
                     } else {
+                        if (!prev.cancelledAt && prev.status !== "cancelled" && isCancelled) {
+                            toast(`Order ${o.code} was cancelled.`);
+                        }
                         const prevMsgs = prev.messages?.length || 0;
                         const curMsgs = o.messages?.length || 0;
                         if (curMsgs > prevMsgs) {
@@ -648,32 +654,35 @@ export function VDashboard() {
                     }
                 });
             }
-            knownRef.current = new Map(activeOrders.map((o) => [o.id, o]));
+            knownRef.current = new Map(vendorOrders.map((o) => [o.id, o]));
 
             // Keep queue stable if items haven't changed to prevent needless re-renders
             setQueue((prevQueue) => {
-                if (prevQueue.length !== activeOrders.length)
-                    return activeOrders;
-                const changed = activeOrders.some((o, i) => {
+                if (prevQueue.length !== vendorOrders.length)
+                    return vendorOrders;
+                const changed = vendorOrders.some((o, i) => {
                     const p = prevQueue[i];
                     return (
                         !p ||
                         p.id !== o.id ||
+                        p.status !== o.status ||
+                        p.cancelledAt !== o.cancelledAt ||
                         p.stage !== o.stage ||
                         p.paid !== o.paid ||
+                        p.payment?.status !== o.payment?.status ||
                         (p.messages?.length || 0) !==
                             (o.messages?.length || 0) ||
                         p.messages?.[p.messages.length - 1]?.text !==
                             o.messages?.[o.messages.length - 1]?.text
                     );
                 });
-                return changed ? activeOrders : prevQueue;
+                return changed ? vendorOrders : prevQueue;
             });
 
             // Keep openOrder stable while typing unless order content actually changed
             setOpenOrder((prev) => {
                 if (!prev) return null;
-                const updated = activeOrders.find((x) => x.id === prev.id);
+                const updated = vendorOrders.find((x) => x.id === prev.id);
                 if (!updated) return prev;
                 const msgsChanged =
                     (prev.messages?.length || 0) !==
@@ -682,8 +691,10 @@ export function VDashboard() {
                         updated.messages?.[updated.messages.length - 1]?.text;
                 const stageChanged =
                     prev.stage !== updated.stage ||
-                    prev.prepStage !== updated.prepStage;
-                const paidChanged = prev.paid !== updated.paid;
+                    prev.prepStage !== updated.prepStage ||
+                    prev.status !== updated.status ||
+                    prev.cancelledAt !== updated.cancelledAt;
+                const paidChanged = prev.paid !== updated.paid || prev.payment?.status !== updated.payment?.status;
                 if (msgsChanged || stageChanged || paidChanged) {
                     return updated;
                 }
@@ -735,8 +746,9 @@ export function VDashboard() {
         )
             return;
         try {
-            await api.cancelOrder(order.id);
-            setQueue((q) => q.filter((x) => x.id !== order.id));
+            const updated = await api.cancelOrder(order.id);
+            const norm = normalizeVendorOrder(updated);
+            setQueue((q) => q.map((x) => (x.id === order.id ? norm : x)));
             setOpenOrder(null);
             toast(`Order ${order.code} cancelled and refunded`);
         } catch (err) {
@@ -769,32 +781,26 @@ export function VDashboard() {
             ...o,
         }));
         if (filter === "active")
-            return withStage.filter((o) => o.prepStage !== "collected");
+            return withStage.filter(
+                (o) =>
+                    !o.cancelledAt &&
+                    o.status !== "cancelled" &&
+                    o.prepStage !== "collected"
+            );
         if (filter === "ready")
-            return withStage.filter((o) => o.prepStage === "ready");
+            return withStage.filter(
+                (o) =>
+                    !o.cancelledAt &&
+                    o.status !== "cancelled" &&
+                    o.prepStage === "ready"
+            );
         return withStage;
     }, [queue, filter]);
 
-    const weekTotal = useMemo(() => {
-        if (ledgerData && ledgerData.weekTotal !== undefined) {
-            return Number(ledgerData.weekTotal) || 0;
-        }
-        // eslint-disable-next-line react(purity) -- Date.now() is intentional; queue refreshes every 3s
-        const weekAgo = Date.now() - 7 * 86400_000;
-        return queue
-            .filter((o) => o.paid && (o.createdAt || 0) >= weekAgo)
-            .reduce((sum, o) => sum + (Number(o.subtotal ?? o.total) || 0), 0);
-    }, [ledgerData, queue]);
-
-    const newCount =
-        ledgerData?.newCount ??
-        queue.filter((o) => (o.stage || "accepted") === "accepted").length;
-    const readyCount =
-        ledgerData?.readyCount ??
-        queue.filter((o) => o.stage === "ready").length;
-    const inProgressCount =
-        ledgerData?.inProgressCount ??
-        queue.filter((o) => o.stage !== "collected").length;
+    const weekTotal = Number(ledgerData?.weekTotal ?? 0) || 0;
+    const newCount = Number(ledgerData?.newCount ?? 0) || 0;
+    const readyCount = Number(ledgerData?.readyCount ?? 0) || 0;
+    const inProgressCount = Number(ledgerData?.inProgressCount ?? 0) || 0;
 
     return (
         <div className="space-y-6">
@@ -887,6 +893,10 @@ export function VDashboard() {
                     {list.map((o) => {
                         const stage = o.stage || "accepted";
                         const stageMeta = PREP_STAGES[stageIndex(stage)];
+                        const isCancelled = Boolean(
+                            o.cancelledAt || o.status === "cancelled"
+                        );
+                        const paySt = o.payment?.status;
                         return (
                             <li
                                 key={o.id}
@@ -899,7 +909,7 @@ export function VDashboard() {
                                         </p>
                                         <p className="text-sm text-ink-2">
                                             {o.customer}
-                                            {o.phone && (
+                                            {o.phone && !isCancelled && (
                                                 <a
                                                     href={`tel:${o.phone}`}
                                                     className="ml-2 inline-flex items-center gap-1 font-semibold text-brand-strong"
@@ -911,12 +921,31 @@ export function VDashboard() {
                                         </p>
                                     </div>
                                     <div className="flex flex-wrap items-center gap-1.5">
-                                        {o.paid && (
-                                            <Badge tone="ok">Paid</Badge>
+                                        {isCancelled ? (
+                                            <>
+                                                <Badge tone="bad">Cancelled</Badge>
+                                                <Badge
+                                                    tone={
+                                                        paySt === "refund_pending"
+                                                            ? "warn"
+                                                            : "mute"
+                                                    }
+                                                >
+                                                    {paySt === "refund_pending"
+                                                        ? "Refund pending"
+                                                        : "Refunded"}
+                                                </Badge>
+                                            </>
+                                        ) : (
+                                            <>
+                                                {o.paid && (
+                                                    <Badge tone="ok">Paid</Badge>
+                                                )}
+                                                <Badge tone={stageMeta.tone}>
+                                                    {stageMeta.label}
+                                                </Badge>
+                                            </>
                                         )}
-                                        <Badge tone={stageMeta.tone}>
-                                            {stageMeta.label}
-                                        </Badge>
                                     </div>
                                 </div>
 
@@ -972,14 +1001,16 @@ export function VDashboard() {
                                             {o.messages.length > 1 ? "s" : ""}
                                         </Badge>
                                     )}
-                                    {o.paid && stage !== "collected" && (
-                                        <Badge tone="warn">
-                                            <Wallet className="h-3 w-3" />
-                                            STEW is holding{" "}
-                                            {money(o.subtotal ?? o.total)}
-                                        </Badge>
-                                    )}
-                                    {stage === "collected" && (
+                                    {!isCancelled &&
+                                        o.paid &&
+                                        stage !== "collected" && (
+                                            <Badge tone="warn">
+                                                <Wallet className="h-3 w-3" />
+                                                STEW is holding{" "}
+                                                {money(o.subtotal ?? o.total)}
+                                            </Badge>
+                                        )}
+                                    {!isCancelled && stage === "collected" && (
                                         <Badge tone="ok">Released to you</Badge>
                                     )}
                                     <Button
@@ -987,12 +1018,12 @@ export function VDashboard() {
                                         variant="outline"
                                         onClick={() => setOpenOrder(o)}
                                     >
-                                        {stage === "ready"
+                                        {!isCancelled && stage === "ready"
                                             ? "Enter pickup code / Open"
                                             : "Open order"}
                                     </Button>
                                 </div>
-                                {o.paid && stage !== "collected" && (
+                                {!isCancelled && o.paid && stage !== "collected" && (
                                     <div className="mt-3">
                                         <HandoffCodeForm
                                             order={o}
@@ -1060,108 +1091,130 @@ export function VDashboard() {
                                 </p>
                             )}
                         </div>
-                        <StageBar
-                            order={{
-                                prepStage: openOrder.stage || "accepted",
-                                prepAt: openOrder.prepAt,
-                            }}
-                            busy={busyId === openOrder.id}
-                            onAdvance={(stage) => advance(openOrder, stage)}
-                        />
-                        {openOrder.paid &&
-                            (openOrder.stage || "accepted") !== "collected" && (
-                                <div className="space-y-2 rounded-xl bg-warn-soft p-3">
-                                    <p className="text-sm font-semibold text-warn">
-                                        <Wallet className="mr-1 inline h-4 w-4" />
-                                        STEW is holding{" "}
-                                        {money(
-                                            openOrder.subtotal ??
-                                                openOrder.total
-                                        )}{" "}
-                                        for this order.
-                                    </p>
-                                    <p className="text-xs text-warn">
-                                        {(openOrder.stage || "accepted") ===
-                                        "ready"
-                                            ? "Your food is ready — once the student confirms they collected it, your money is released."
-                                            : "Money is released once the student confirms collection, after you mark the order ready."}
-                                    </p>
-                                    {(openOrder.stage === "ready" ||
-                                        openOrder.collectionNudgedAt) && (
+                        {openOrder.cancelledAt ||
+                        openOrder.status === "cancelled" ? (
+                            <div className="rounded-xl border border-bad/30 bg-bad-soft p-3 text-sm font-semibold text-bad">
+                                Order cancelled (
+                                {openOrder.payment?.status === "refund_pending"
+                                    ? "Refund pending"
+                                    : "Refunded"}
+                                ). No preparation or handover needed.
+                            </div>
+                        ) : (
+                            <>
+                                <StageBar
+                                    order={{
+                                        prepStage:
+                                            openOrder.stage || "accepted",
+                                        prepAt: openOrder.prepAt,
+                                    }}
+                                    busy={busyId === openOrder.id}
+                                    onAdvance={(stage) =>
+                                        advance(openOrder, stage)
+                                    }
+                                />
+                                {openOrder.paid &&
+                                    (openOrder.stage || "accepted") !==
+                                        "collected" && (
+                                        <div className="space-y-2 rounded-xl bg-warn-soft p-3">
+                                            <p className="text-sm font-semibold text-warn">
+                                                <Wallet className="mr-1 inline h-4 w-4" />
+                                                STEW is holding{" "}
+                                                {money(
+                                                    openOrder.subtotal ??
+                                                        openOrder.total
+                                                )}{" "}
+                                                for this order.
+                                            </p>
+                                            <p className="text-xs text-warn">
+                                                {(openOrder.stage ||
+                                                    "accepted") === "ready"
+                                                    ? "Your food is ready — once the student confirms they collected it, your money is released."
+                                                    : "Money is released once the student confirms collection, after you mark the order ready."}
+                                            </p>
+                                            {(openOrder.stage === "ready" ||
+                                                openOrder.collectionNudgedAt) && (
+                                                <Button
+                                                    size="sm"
+                                                    variant="outline"
+                                                    onClick={async () => {
+                                                        await api
+                                                            .nudgeCollection(
+                                                                openOrder.id
+                                                            )
+                                                            .catch(() => {});
+                                                        setQueue((q) =>
+                                                            q.map((x) =>
+                                                                x.id ===
+                                                                openOrder.id
+                                                                    ? {
+                                                                          ...x,
+                                                                          collectionNudgedAt:
+                                                                              Date.now(),
+                                                                      }
+                                                                    : x
+                                                            )
+                                                        );
+                                                        toast(
+                                                            "Reminder sent to the student"
+                                                        );
+                                                    }}
+                                                >
+                                                    Remind the student to confirm
+                                                </Button>
+                                            )}
+                                        </div>
+                                    )}
+                                <HandoffCodeForm
+                                    order={openOrder}
+                                    onVerified={(updated) => {
+                                        const norm = updated
+                                            ? normalizeVendorOrder(updated)
+                                            : {
+                                                  ...openOrder,
+                                                  stage: "collected",
+                                                  prepStage: "collected",
+                                              };
+                                        setQueue((q) =>
+                                            q.map((x) =>
+                                                x.id === openOrder.id ? norm : x
+                                            )
+                                        );
+                                        setOpenOrder(norm);
+                                    }}
+                                />
+                                <OrderThread
+                                    order={openOrder}
+                                    from="vendor"
+                                    onSent={(updated) => {
+                                        if (updated) {
+                                            const norm =
+                                                normalizeVendorOrder(updated);
+                                            setQueue((q) =>
+                                                q.map((x) =>
+                                                    x.id === openOrder.id
+                                                        ? norm
+                                                        : x
+                                                )
+                                            );
+                                            setOpenOrder(norm);
+                                        }
+                                    }}
+                                />
+                                {(openOrder.stage || "accepted") !==
+                                    "collected" && (
+                                    <div className="pt-2 border-t border-line flex justify-end">
                                         <Button
                                             size="sm"
                                             variant="outline"
-                                            onClick={async () => {
-                                                await api
-                                                    .nudgeCollection(
-                                                        openOrder.id
-                                                    )
-                                                    .catch(() => {});
-                                                setQueue((q) =>
-                                                    q.map((x) =>
-                                                        x.id === openOrder.id
-                                                            ? {
-                                                                  ...x,
-                                                                  collectionNudgedAt:
-                                                                      Date.now(),
-                                                              }
-                                                            : x
-                                                    )
-                                                );
-                                                toast(
-                                                    "Reminder sent to the student"
-                                                );
-                                            }}
+                                            className="text-bad hover:bg-bad-soft"
+                                            onClick={() => decline(openOrder)}
                                         >
-                                            Remind the student to confirm
+                                            Decline & refund order
                                         </Button>
-                                    )}
-                                </div>
-                            )}
-                        <HandoffCodeForm
-                            order={openOrder}
-                            onVerified={(updated) => {
-                                const norm = updated
-                                    ? normalizeVendorOrder(updated)
-                                    : {
-                                          ...openOrder,
-                                          stage: "collected",
-                                          prepStage: "collected",
-                                      };
-                                setQueue((q) =>
-                                    q.map((x) =>
-                                        x.id === openOrder.id ? norm : x
-                                    )
-                                );
-                                setOpenOrder(norm);
-                            }}
-                        />
-                        <OrderThread
-                            order={openOrder}
-                            from="vendor"
-                            onSent={(updated) => {
-                                if (updated) {
-                                    const norm = normalizeVendorOrder(updated);
-                                    setQueue((q) =>
-                                        q.map((x) =>
-                                            x.id === openOrder.id ? norm : x
-                                        )
-                                    );
-                                    setOpenOrder(norm);
-                                }
-                            }}
-                        />
-                        {(openOrder.stage || "accepted") !== "collected" && (
-                            <div className="pt-2 border-t border-line flex justify-end">
-                                <Button
-                                    size="sm"
-                                    variant="outline"
-                                    className="text-bad hover:bg-bad-soft"
-                                    onClick={() => decline(openOrder)}
-                                >
-                                    Decline & refund order
-                                </Button>
-                            </div>
+                                    </div>
+                                )}
+                            </>
                         )}
                     </div>
                 )}
@@ -1616,57 +1669,35 @@ export function VMenu() {
 }
 
 /* ---------- Earnings + escrow ledger ---------- */
-const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-const ORDERED_DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+const EMPTY_DAYS = [
+    { d: "Mon", v: 0 },
+    { d: "Tue", v: 0 },
+    { d: "Wed", v: 0 },
+    { d: "Thu", v: 0 },
+    { d: "Fri", v: 0 },
+    { d: "Sat", v: 0 },
+    { d: "Sun", v: 0 },
+];
 
 export function VEarnings() {
     const ledger = useAsync(() => api.payouts(), []);
-    const vendorOrders = useAsync(() => api.orders({ scope: "vendor" }), []);
     useEffect(() => {
         const t = setInterval(() => {
             ledger.retry();
-            vendorOrders.retry();
         }, 5000);
         return () => clearInterval(t);
-        // eslint-disable-next-line react-hooks/exhaustive-deps -- [ledger.retry, vendorOrders.retry] are stable polling handles
-    }, [ledger.retry, vendorOrders.retry]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- [ledger.retry] is a stable polling handle
+    }, [ledger.retry]);
     const held = ledger.data?.held ?? 0;
     const released = ledger.data?.released ?? 0;
 
-    const salesByDay = useMemo(() => {
-        if (Array.isArray(ledger.data?.salesByDay) && ledger.data.salesByDay.length) {
-            return ledger.data.salesByDay;
-        }
-        const totals = {
-            Mon: 0,
-            Tue: 0,
-            Wed: 0,
-            Thu: 0,
-            Fri: 0,
-            Sat: 0,
-            Sun: 0,
-        };
-        // eslint-disable-next-line react(purity) -- Date.now() intentional; vendorOrders refreshes every 5s
-        const weekAgo = Date.now() - 7 * 86400_000;
-        (vendorOrders.data || []).forEach((o) => {
-            const paid =
-                o.payment?.status === "paid" ||
-                o.payment?.status === "released";
-            if (!paid || o.status === "cancelled" || o.cancelledAt) return;
-            const ts = o.createdAt || Date.now();
-            if (ts < weekAgo) return;
-            const dayName = DAY_LABELS[new Date(ts).getDay()];
-            totals[dayName] =
-                (totals[dayName] || 0) + (Number(o.subtotal ?? o.total) || 0);
-        });
-        return ORDERED_DAYS.map((d) => ({
-            d,
-            v: Math.round(totals[d] * 100) / 100,
-        }));
-    }, [ledger.data?.salesByDay, vendorOrders.data]);
+    const salesByDay =
+        Array.isArray(ledger.data?.salesByDay) && ledger.data.salesByDay.length
+            ? ledger.data.salesByDay
+            : EMPTY_DAYS;
 
     const max = Math.max(0, ...salesByDay.map((s) => s.v));
-    const total = ledger.data?.weekTotal ?? salesByDay.reduce((s, x) => s + x.v, 0);
+    const total = Number(ledger.data?.weekTotal ?? 0) || 0;
     const bestDay = max > 0 ? salesByDay.find((s) => s.v === max)?.d : "—";
 
     return (
