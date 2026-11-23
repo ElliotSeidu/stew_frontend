@@ -115,10 +115,16 @@ export function Apply() {
                     sells: toList(d.sells),
                     logo: logo || auth.user.logo,
                     vendorId: auth.user.vendorId || "pending",
-                    kitchenOpen: true,
+                    kitchenOpen: false,
+                    vendorActive: false,
                 });
             }
-            toast("Your kitchen is now open! Welcome to your dashboard.");
+            const isPending = res?.status === "pending" || serverUser?.vendorActive === false;
+            toast(
+                isPending
+                    ? "Application submitted! Your kitchen is pending admin approval."
+                    : "Your kitchen is now open! Welcome to your dashboard."
+            );
             nav("/app/vendor", { replace: true });
         } catch (e) {
             setError("root", { message: e.message });
@@ -723,7 +729,12 @@ export function VDashboard() {
         // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional polling; loadOrders is stable via useCallback
     }, [loadOrders]);
 
+    const isPendingApproval = Boolean(
+        auth.user?.vendorId && auth.user?.vendorActive === false
+    );
+
     const toggleOpen = async (nextOpen) => {
+        if (isPendingApproval) return;
         setOpen(nextOpen);
         try {
             await auth.saveProfile({ open: nextOpen });
@@ -804,6 +815,16 @@ export function VDashboard() {
 
     return (
         <div className="space-y-6">
+            {isPendingApproval && (
+                <Card
+                    data-testid="vendor-pending-banner"
+                    className="border-warn/40 bg-warn-soft p-4 text-sm font-medium text-warn"
+                >
+                    Your kitchen application is pending admin approval. Students
+                    cannot see your kitchen yet and you cannot publish dishes
+                    until an admin approves it.
+                </Card>
+            )}
             {ordersMeta?.truncated && (
                 <TruncationNotice
                     pagination={ordersMeta}
@@ -837,10 +858,15 @@ export function VDashboard() {
                         </Button>
                     )}
                     <label className="flex items-center gap-3 text-sm font-semibold">
-                        {open ? "Open for orders" : "Closed"}
+                        {isPendingApproval
+                            ? "Pending approval"
+                            : open
+                              ? "Open for orders"
+                              : "Closed"}
                         <Switch
-                            checked={open}
+                            checked={open && !isPendingApproval}
                             onChange={toggleOpen}
+                            disabled={isPendingApproval}
                             label="Kitchen open"
                         />
                     </label>
@@ -1530,8 +1556,21 @@ export function VMenu() {
 
     const withoutPhoto = items.filter((m) => !m.image).length;
 
+    const isPendingApproval = Boolean(
+        auth.user?.vendorId && auth.user?.vendorActive === false
+    );
+
     return (
         <div className="space-y-4">
+            {isPendingApproval && (
+                <Card
+                    data-testid="vendor-pending-banner"
+                    className="border-warn/40 bg-warn-soft p-4 text-sm font-medium text-warn"
+                >
+                    Your kitchen is pending admin approval. Dish publishing is
+                    disabled until an admin activates your kitchen.
+                </Card>
+            )}
             <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
                     <h1 className="text-2xl font-extrabold">What you cook</h1>
@@ -1543,7 +1582,12 @@ export function VMenu() {
                               : "Every dish has a photo"}
                     </p>
                 </div>
-                <Button onClick={() => setAdding(true)}>Add dish</Button>
+                <Button
+                    onClick={() => setAdding(true)}
+                    disabled={isPendingApproval}
+                >
+                    Add dish
+                </Button>
             </div>
 
             {loading ? (

@@ -495,16 +495,17 @@ export function Qty({
     );
 }
 
-export function Switch({ checked, onChange, label }) {
+export function Switch({ checked, onChange, label, disabled = false }) {
     return (
         <button
             type="button"
             role="switch"
             aria-checked={checked}
             aria-label={label}
-            onClick={() => onChange(!checked)}
+            disabled={disabled}
+            onClick={() => !disabled && onChange(!checked)}
             className={cx(
-                "relative h-7 w-12 shrink-0 rounded-full transition",
+                "relative h-7 w-12 shrink-0 rounded-full transition disabled:cursor-not-allowed disabled:opacity-50",
                 checked ? "bg-brand" : "bg-line"
             )}
         >

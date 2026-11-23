@@ -78,6 +78,7 @@ function sanitizeCachedUser(u) {
     logo: safe.logo,
     vendorId: safe.vendorId,
     kitchenOpen: safe.kitchenOpen,
+    vendorActive: safe.vendorActive,
   }
 }
 
