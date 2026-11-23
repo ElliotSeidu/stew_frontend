@@ -11,10 +11,12 @@ export const MAX_UPLOAD_BYTES = 4 * 1024 * 1024 // reject anything silly before 
  * Read a picked file and return a square, downscaled JPEG data URL.
  * Square + small keeps it comfortably inside the localStorage budget.
  */
+const ALLOWED_IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif'])
+
 export function fileToSquareDataUrl(file, size = 256, quality = 0.82) {
   return new Promise((resolve, reject) => {
     if (!file) return reject(new Error('No file chosen'))
-    if (!file.type?.startsWith('image/')) return reject(new Error('Please choose an image file'))
+    if (!ALLOWED_IMAGE_TYPES.has(file.type)) return reject(new Error('Please choose a JPEG, PNG, WebP, or GIF image'))
     if (file.size > MAX_UPLOAD_BYTES) return reject(new Error('That image is too large (max 4 MB)'))
 
     const url = URL.createObjectURL(file)
@@ -48,7 +50,7 @@ export function fileToSquareDataUrl(file, size = 256, quality = 0.82) {
 export function fileToWideDataUrl(file, width = 640, ratio = 0.625, quality = 0.82) {
   return new Promise((resolve, reject) => {
     if (!file) return reject(new Error('No file chosen'))
-    if (!file.type?.startsWith('image/')) return reject(new Error('Please choose an image file'))
+    if (!ALLOWED_IMAGE_TYPES.has(file.type)) return reject(new Error('Please choose a JPEG, PNG, WebP, or GIF image'))
     if (file.size > MAX_UPLOAD_BYTES) return reject(new Error('That image is too large (max 4 MB)'))
 
     const url = URL.createObjectURL(file)

@@ -1258,6 +1258,7 @@ function ItemForm({ onSave, item, submitting }) {
         register,
         handleSubmit,
         setError,
+        clearErrors,
         formState: { errors },
     } = useForm({
         defaultValues: {
@@ -1273,6 +1274,7 @@ function ItemForm({ onSave, item, submitting }) {
         try {
             const f = e.target.files?.[0];
             if (!f) return;
+            clearErrors("root");
             setBusy(true);
             setImage(await fileToWideDataUrl(f, 640));
         } catch (err) {
