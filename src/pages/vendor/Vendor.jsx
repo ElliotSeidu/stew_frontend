@@ -715,7 +715,9 @@ export function VDashboard() {
 
     useEffect(() => {
         loadOrders();
-        const t = setInterval(loadOrders, 3000);
+        const t = setInterval(() => {
+            if (document.visibilityState !== "hidden") loadOrders();
+        }, 6000);
         const onFocus = () => {
             if (!document.hidden) loadOrders();
         };
@@ -1438,7 +1440,9 @@ export function VMenu() {
                 });
         };
         fetchMeals();
-        const t = setInterval(fetchMeals, 5000);
+        const t = setInterval(() => {
+            if (document.visibilityState !== "hidden") fetchMeals();
+        }, 6000);
         return () => {
             active = false;
             clearInterval(t);
@@ -1729,8 +1733,8 @@ export function VEarnings() {
     const ledger = useAsync(() => api.payouts(), []);
     useEffect(() => {
         const t = setInterval(() => {
-            ledger.retry();
-        }, 5000);
+            if (document.visibilityState !== "hidden") ledger.retry();
+        }, 6000);
         return () => clearInterval(t);
         // eslint-disable-next-line react-hooks/exhaustive-deps -- [ledger.retry] is a stable polling handle
     }, [ledger.retry]);

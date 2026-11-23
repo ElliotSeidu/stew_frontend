@@ -140,7 +140,12 @@ export function Orders() {
   const ordersRetryRef = useRef(orders.retry)
   useEffect(() => { ordersRetryRef.current = orders.retry }, [orders.retry])
   // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional polling; uses ref for stability
-  useEffect(() => { const t = setInterval(() => ordersRetryRef.current(true), 4000); return () => clearInterval(t) }, [])
+  useEffect(() => {
+    const t = setInterval(() => {
+      if (document.visibilityState !== 'hidden') ordersRetryRef.current(true)
+    }, 6000)
+    return () => clearInterval(t)
+  }, [])
   const cancelUnpaid = async (e, id) => {
     e.preventDefault()
     e.stopPropagation()
@@ -410,7 +415,12 @@ export function OrderDetail() {
     return () => { alive = false }
   }, [retry, toast])
 
-  useEffect(() => { const t = setInterval(() => retry(true), 3000); return () => clearInterval(t) }, [retry])
+  useEffect(() => {
+    const t = setInterval(() => {
+      if (document.visibilityState !== 'hidden') retry(true)
+    }, 6000)
+    return () => clearInterval(t)
+  }, [retry])
   // Follow the chef's progress taps, not elapsed time.
   useEffect(() => {
     if (!o) return
