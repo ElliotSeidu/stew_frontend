@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import {
     Badge,
     Button,
@@ -478,6 +478,8 @@ export function AOrders() {
 export function ADisputes() {
     const toast = useToast();
     const cases = useAsync(() => api.cases(), []);
+    const [resolvingCode, setResolvingCode] = useState(null);
+    const resolvingRef = useRef(new Set());
 
     const list = useMemo(() => {
         const raw = cases.data || [];
@@ -489,12 +491,18 @@ export function ADisputes() {
     }, [cases.data]);
 
     const close = async (code, action, msg) => {
+        if (resolvingRef.current.has(code)) return;
+        resolvingRef.current.add(code);
+        setResolvingCode(code);
         try {
             await api.resolveCase(code, action);
             toast(msg);
             cases.retry();
         } catch (err) {
             toast(err.message, "bad");
+        } finally {
+            resolvingRef.current.delete(code);
+            setResolvingCode((prev) => (prev === code ? null : prev));
         }
     };
 
@@ -533,6 +541,8 @@ export function ADisputes() {
                             <div className="mt-3 flex gap-2">
                                 <Button
                                     size="sm"
+                                    disabled={resolvingCode === d.code}
+                                    loading={resolvingCode === d.code}
                                     onClick={() => close(d.code, "refund", "Refund issued")}
                                 >
                                     Refund
@@ -540,6 +550,8 @@ export function ADisputes() {
                                 <Button
                                     size="sm"
                                     variant="outline"
+                                    disabled={resolvingCode === d.code}
+                                    loading={resolvingCode === d.code}
                                     onClick={() =>
                                         close(d.code, "dismiss", "Case dismissed")
                                     }
