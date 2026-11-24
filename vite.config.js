@@ -21,6 +21,21 @@ function enforceApiUrlPlugin(command, mode) {
   }
 }
 
+function stagingNoindexPlugin(mode) {
+  return {
+    name: 'staging-noindex-meta',
+    transformIndexHtml(html) {
+      const env = loadEnv(mode, process.cwd(), '')
+      const appEnv = (process.env.VITE_APP_ENV ?? env.VITE_APP_ENV ?? '').trim()
+      if (appEnv !== 'staging') return html
+      return html.replace(
+        '</head>',
+        '  <meta name="robots" content="noindex, nofollow" />\n  </head>',
+      )
+    },
+  }
+}
+
 export default defineConfig(({ command, mode }) => ({
   build: {
     sourcemap: false,
@@ -34,6 +49,7 @@ export default defineConfig(({ command, mode }) => ({
   },
   plugins: [
     enforceApiUrlPlugin(command, mode),
+    stagingNoindexPlugin(mode),
     react(),
     tailwindcss(),
     VitePWA({

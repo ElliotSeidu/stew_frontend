@@ -173,6 +173,21 @@ function VendorApplyLayout() {
     );
 }
 
+const IS_STAGING = import.meta.env.VITE_APP_ENV === "staging";
+
+function StagingBanner() {
+    if (!IS_STAGING) return null;
+    return (
+        <div
+            role="status"
+            data-testid="staging-banner"
+            className="w-full border-b border-amber-400 bg-amber-300 px-3 py-2 text-center text-xs font-semibold leading-snug text-amber-950"
+        >
+            TEST ENVIRONMENT. No real money. Do not reuse real passwords or enter real personal data.
+        </div>
+    );
+}
+
 function RouteTracker() {
     const { pathname } = useLocation();
     useEffect(() => {
@@ -185,6 +200,7 @@ export default function App() {
     const { pathname } = useLocation();
     return (
         <>
+            <StagingBanner />
             <RouteTracker />
             <ChunkErrorBoundary key={pathname}>
                 <Suspense fallback={<RouteFallback />}>
