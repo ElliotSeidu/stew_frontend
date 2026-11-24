@@ -874,11 +874,6 @@ export function VDashboard() {
                     )}
                 </div>
                 <div className="flex items-center gap-3">
-                    {auth.user?.accountType !== "vendor" && (
-                        <Button to="/app" variant="outline" size="sm">
-                            Order food
-                        </Button>
-                    )}
                     <label className="flex items-center gap-3 text-sm font-semibold">
                         {isPendingApproval
                             ? "Pending approval"
