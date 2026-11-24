@@ -34,9 +34,10 @@ import {
 } from "../../components/ui";
 import { CAMPUS, niceDay, FEE_RATE } from "../../config";
 import { useAuth, useToast } from "../../context/Providers";
-import { api } from "../../lib/api";
+import { api, getServerNowMs } from "../../lib/api";
 import { useAsync } from "../../lib/hooks";
 import { CATEGORIES, PREP_STAGES, stageIndex } from "../../lib/mockData";
+import { formatReceivedAgo } from "../../lib/receivedAgo";
 import { fileToSquareDataUrl, fileToWideDataUrl } from "../../lib/upload";
 import { money, timeAgo } from "../../lib/utils";
 
@@ -606,6 +607,7 @@ export function VDashboard() {
     const [busyId, setBusyId] = useState(null);
     const [openOrder, setOpenOrder] = useState(null);
     const [filter, setFilter] = useState("active");
+    const [nowTick, setNowTick] = useState(() => getServerNowMs());
     const knownRef = useRef(null);
     const sells = auth.user?.sells || [];
 
@@ -721,13 +723,22 @@ export function VDashboard() {
         const t = setInterval(() => {
             if (document.visibilityState !== "hidden") loadOrders();
         }, 6000);
+        const tick = setInterval(() => {
+            if (document.visibilityState !== "hidden") {
+                setNowTick(getServerNowMs());
+            }
+        }, 30000);
         const onFocus = () => {
-            if (!document.hidden) loadOrders();
+            if (!document.hidden) {
+                setNowTick(getServerNowMs());
+                loadOrders();
+            }
         };
         window.addEventListener("focus", onFocus);
         document.addEventListener("visibilitychange", onFocus);
         return () => {
             clearInterval(t);
+            clearInterval(tick);
             window.removeEventListener("focus", onFocus);
             document.removeEventListener("visibilitychange", onFocus);
         };
@@ -948,6 +959,19 @@ export function VDashboard() {
                                         <p className="text-sm text-ink-2">
                                             {o.customer}
                                         </p>
+                                        {!isCancelled &&
+                                            formatReceivedAgo(
+                                                o.payment?.paidAt || o.paidAt,
+                                                nowTick
+                                            ) && (
+                                                <p className="text-xs text-ink-3">
+                                                    {formatReceivedAgo(
+                                                        o.payment?.paidAt ||
+                                                            o.paidAt,
+                                                        nowTick
+                                                    )}
+                                                </p>
+                                            )}
                                     </div>
                                     <div className="flex flex-wrap items-center gap-1.5">
                                         {isCancelled ? (

@@ -17,6 +17,9 @@ if (typeof window !== 'undefined' && import.meta.env.PROD && window.location.pro
 }
 const wait = (ms = 350) => new Promise((r) => setTimeout(r, ms))
 
+let serverClockOffsetMs = 0
+export const getServerNowMs = () => Date.now() + serverClockOffsetMs
+
 async function http(path, { method = 'GET', body } = {}) {
   if (!BASE) {
     throw Object.assign(new Error('Service configuration error: VITE_API_URL is not set.'), { status: 503 })
@@ -31,6 +34,13 @@ async function http(path, { method = 'GET', body } = {}) {
       body: body && JSON.stringify(body),
       signal: controller.signal,
     })
+    const srvTime = res.headers.get('X-Server-Time')
+    if (srvTime) {
+      const parsed = Date.parse(srvTime)
+      if (!Number.isNaN(parsed)) {
+        serverClockOffsetMs = parsed - Date.now()
+      }
+    }
     const data = await res.json().catch(() => ({}))
     if (!res.ok) {
       if (res.status === 401 && token && typeof window !== 'undefined') {
@@ -40,7 +50,7 @@ async function http(path, { method = 'GET', body } = {}) {
           })
         )
       }
-      throw Object.assign(new Error(data.detail || data.message || 'Something went wrong'), { code: data.code, status: res.status, fields: data.errors })
+      throw Object.assign(new Error(data.detail || data.message || 'Something went wrong'), { code: data.code, status: res.status, fields: data.errors, data })
     }
     const totalHdr = res.headers.get('X-Total-Count')
     if (Array.isArray(data) && totalHdr !== null) {
