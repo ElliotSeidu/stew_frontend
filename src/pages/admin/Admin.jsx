@@ -4,6 +4,10 @@ import {
     Button,
     Card,
     EmptyState,
+    Field,
+    Input,
+    Modal,
+    Select,
     Switch,
     ErrorState,
     Stars,
@@ -123,22 +127,51 @@ export function AOverview() {
 export function AVendors() {
     const toast = useToast();
     const [tab, setTab] = useState("active");
+    const [approveTarget, setApproveTarget] = useState(null);
+    const [verificationMethod, setVerificationMethod] = useState("in_person");
+    const [verificationNote, setVerificationNote] = useState("");
+    const [approving, setApproving] = useState(false);
     const vendors = usePagedList((p) => api.adminVendors(p), (v) => v.id);
 
     const allVendors = vendors.data || [];
     const pending = allVendors.filter((v) => v.active === false);
     const activeList = allVendors.filter((v) => v.active !== false);
 
-    const toggleVendor = async (id, active) => {
+    const toggleVendor = async (vendor, active) => {
+        if (active) {
+            setVerificationMethod("in_person");
+            setVerificationNote("");
+            setApproveTarget(vendor);
+            return;
+        }
         try {
-            await api.updateAdminVendor(id, { active });
-            toast(
-                active ? "Vendor activated" : "Vendor suspended",
-                active ? "ok" : "bad"
-            );
+            await api.updateAdminVendor(vendor.id, { active: false });
+            toast("Vendor suspended", "bad");
             vendors.retry();
         } catch (err) {
             toast(err.message, "bad");
+        }
+    };
+
+    const confirmApprove = async (e) => {
+        e.preventDefault();
+        if (!approveTarget) return;
+        setApproving(true);
+        try {
+            await api.updateAdminVendor(approveTarget.id, {
+                active: true,
+                verificationMethod,
+                ...(verificationNote.trim()
+                    ? { verificationNote: verificationNote.trim() }
+                    : {}),
+            });
+            toast("Vendor activated", "ok");
+            setApproveTarget(null);
+            vendors.retry();
+        } catch (err) {
+            toast(err.message, "bad");
+        } finally {
+            setApproving(false);
         }
     };
 
@@ -186,7 +219,7 @@ export function AVendors() {
                                 <div className="mt-3 flex gap-2">
                                     <Button
                                         size="sm"
-                                        onClick={() => toggleVendor(v.id, true)}
+                                        onClick={() => toggleVendor(v, true)}
                                     >
                                         Activate kitchen
                                     </Button>
@@ -244,7 +277,7 @@ export function AVendors() {
                                             checked={v.active !== false}
                                             label={`Toggle ${v.name}`}
                                             onChange={(checked) =>
-                                                toggleVendor(v.id, checked)
+                                                toggleVendor(v, checked)
                                             }
                                         />
                                     </td>
@@ -266,6 +299,59 @@ export function AVendors() {
                 loadingMore={vendors.loadingMore}
                 label="vendors"
             />
+            <Modal
+                open={!!approveTarget}
+                onClose={() => setApproveTarget(null)}
+                title={
+                    approveTarget
+                        ? `Approve ${approveTarget.name}`
+                        : "Approve kitchen"
+                }
+            >
+                <form onSubmit={confirmApprove} className="space-y-4">
+                    <p className="text-sm text-ink-2">
+                        Record how you verified this student chef before
+                        activating their kitchen. STEW never collects ID photos.
+                    </p>
+                    <Field label="Verification method">
+                        <Select
+                            value={verificationMethod}
+                            onChange={(e) =>
+                                setVerificationMethod(e.target.value)
+                            }
+                            required
+                        >
+                            <option value="in_person">In-person check</option>
+                            <option value="video_call">Video call</option>
+                            <option value="vouched">
+                                Vouched by campus admin
+                            </option>
+                        </Select>
+                    </Field>
+                    <Field label="Verification note (optional)">
+                        <Input
+                            value={verificationNote}
+                            onChange={(e) =>
+                                setVerificationNote(e.target.value)
+                            }
+                            placeholder="e.g. Met at Legon Hall kitchen"
+                            maxLength={500}
+                        />
+                    </Field>
+                    <div className="flex justify-end gap-2">
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            onClick={() => setApproveTarget(null)}
+                        >
+                            Cancel
+                        </Button>
+                        <Button type="submit" disabled={approving}>
+                            {approving ? "Activating…" : "Activate kitchen"}
+                        </Button>
+                    </div>
+                </form>
+            </Modal>
         </div>
     );
 }

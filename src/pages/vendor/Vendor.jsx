@@ -90,7 +90,6 @@ export function Apply() {
                 ...d,
                 sells: toList(d.sells),
                 logo: logo || undefined,
-                idDoc: d.idDoc?.[0]?.name,
                 kitchenPhoto: d.kitchenPhoto?.[0]?.name,
             });
             const activated = await api.markVendor().catch(() => null);
@@ -243,16 +242,9 @@ export function Apply() {
                         })}
                     />
                 </Field>
-                <Field label="Photo of your student ID" error={errors.idDoc}>
-                    <input
-                        type="file"
-                        accept="image/*,.pdf"
-                        className={fileCls}
-                        {...register("idDoc", {
-                            required: "Upload your student ID",
-                        })}
-                    />
-                </Field>
+                <div className="rounded-lg bg-surface-2 p-3 text-xs text-ink-2">
+                    STEW verifies kitchens via your campus email and an admin check. We never collect photos of student IDs or identity documents.
+                </div>
             </Card>
 
             <Card className="space-y-3">
