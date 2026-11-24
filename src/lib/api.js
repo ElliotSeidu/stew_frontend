@@ -163,6 +163,17 @@ const real = {
   },
   adminConversationMessages: (orderId, reason) =>
     http(`/admin/conversations/${encodeURIComponent(orderId)}/messages/?reason=${encodeURIComponent(reason)}`),
+  adminFailedLogins: (params = {}) => {
+    const sp = new URLSearchParams()
+    if (params.email) sp.set('email', params.email)
+    if (params.ip) sp.set('ip', params.ip)
+    if (params.reason) sp.set('reason', params.reason)
+    if (params.sinceHours != null) sp.set('sinceHours', String(params.sinceHours))
+    if (params.limit != null) sp.set('limit', String(params.limit))
+    if (params.offset != null) sp.set('offset', String(params.offset))
+    const q = sp.toString()
+    return http('/admin/security/failed-logins/' + (q ? `?${q}` : ''))
+  },
   createReview: (p) => post('/reviews/', p),
   applyVendor: (p) => post('/vendor/apply/', p),
   markVendor: () => post('/vendor/activate/'),
@@ -669,6 +680,15 @@ const mock = {
   async auditLogs() { return read(AUDIT_KEY, []) },
   async adminConversations() { return { results: [], count: 0, hasMore: false, nextOffset: null } },
   async adminConversationMessages(orderId, reason) { return { orderId, reason, messages: [] } },
+  async adminFailedLogins() {
+    return {
+      summary: { total24h: 0, uniqueIps24h: 0, topTargetedEmails: [] },
+      results: [],
+      count: 0,
+      hasMore: false,
+      nextOffset: null,
+    }
+  },
 
   // ---- payout batches: aggregate, do not transfer per order (project.md §16.5) ----
   async payoutBatches() { await wait(150); return read('stew.payoutBatches', []) },

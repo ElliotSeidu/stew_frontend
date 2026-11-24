@@ -27,6 +27,7 @@ const LINKS = {
     { to: '/app/admin/payouts', label: 'Payouts', icon: Wallet },
     { to: '/app/admin/audit', label: 'Audit Log', icon: FileText },
     { to: '/app/admin/conversations', label: 'Conversations', icon: MessageSquare },
+    { to: '/app/admin/security', label: 'Security', icon: ShieldAlert },
     { to: '/app/admin/users', label: 'Users', icon: Users },
   ],
 }

@@ -1335,3 +1335,174 @@ export function AConversations() {
         </div>
     );
 }
+
+export function ASecurity() {
+    const [email, setEmail] = useState("");
+    const [ip, setIp] = useState("");
+    const [reason, setReason] = useState("");
+    const [filters, setFilters] = useState({});
+    const [extraRows, setExtraRows] = useState([]);
+    const [loadingMore, setLoadingMore] = useState(false);
+
+    const sec = useAsync(() => api.adminFailedLogins(filters), [filters]);
+    const summary = sec.data?.summary || {
+        total24h: 0,
+        uniqueIps24h: 0,
+        topTargetedEmails: [],
+    };
+    const rows = extraRows.length ? extraRows : sec.data?.results || [];
+    const hasMore =
+        extraRows.length > 0
+            ? extraRows.length < (sec.data?.count || 0)
+            : !!sec.data?.hasMore;
+
+    const applyFilters = (e) => {
+        e.preventDefault();
+        setExtraRows([]);
+        setFilters({
+            ...(email.trim() ? { email: email.trim() } : {}),
+            ...(ip.trim() ? { ip: ip.trim() } : {}),
+            ...(reason ? { reason } : {}),
+        });
+    };
+
+    const loadMore = async () => {
+        const offset = rows.length;
+        setLoadingMore(true);
+        try {
+            const res = await api.adminFailedLogins({ ...filters, offset });
+            setExtraRows([...rows, ...(res.results || [])]);
+        } finally {
+            setLoadingMore(false);
+        }
+    };
+
+    return (
+        <div className="space-y-5">
+            <h1 className="text-2xl font-extrabold">Security · Failed Logins</h1>
+            <div className="grid gap-3 sm:grid-cols-3">
+                <Card className="p-4">
+                    <p className="text-xs text-ink-3">Failed logins (24h)</p>
+                    <p className="num mt-1 text-2xl font-extrabold">
+                        {summary.total24h}
+                    </p>
+                </Card>
+                <Card className="p-4">
+                    <p className="text-xs text-ink-3">Unique IPs (24h)</p>
+                    <p className="num mt-1 text-2xl font-extrabold">
+                        {summary.uniqueIps24h}
+                    </p>
+                </Card>
+                <Card className="p-4">
+                    <p className="text-xs text-ink-3">Top targeted (24h)</p>
+                    <p className="mt-1 truncate text-sm font-semibold">
+                        {summary.topTargetedEmails?.[0]
+                            ? `${summary.topTargetedEmails[0].email} (${summary.topTargetedEmails[0].count})`
+                            : "None"}
+                    </p>
+                </Card>
+            </div>
+
+            <form
+                onSubmit={applyFilters}
+                className="flex flex-wrap items-end gap-2"
+            >
+                <Input
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="Filter email"
+                    aria-label="Filter email"
+                />
+                <Input
+                    value={ip}
+                    onChange={(e) => setIp(e.target.value)}
+                    placeholder="Filter IP"
+                    aria-label="Filter IP"
+                />
+                <Select
+                    value={reason}
+                    onChange={(e) => setReason(e.target.value)}
+                    aria-label="Filter reason"
+                >
+                    <option value="">All reasons</option>
+                    <option value="invalid_credentials">
+                        Invalid credentials
+                    </option>
+                    <option value="unknown_account">Unknown account</option>
+                    <option value="inactive_account">Inactive account</option>
+                    <option value="invalid_login_code">
+                        Invalid login code
+                    </option>
+                    <option value="invalid_reset_code">
+                        Invalid reset code
+                    </option>
+                    <option value="invalid_email_domain">
+                        Invalid email domain
+                    </option>
+                </Select>
+                <Button type="submit" size="sm" variant="secondary">
+                    Filter
+                </Button>
+            </form>
+
+            {sec.error ? (
+                <ErrorState onRetry={sec.retry} />
+            ) : rows.length ? (
+                <div className="overflow-x-auto rounded-2xl border border-line bg-surface">
+                    <table className="w-full text-left text-sm">
+                        <thead className="border-b border-line text-xs text-ink-3">
+                            <tr>
+                                <th className="p-3">Time</th>
+                                <th className="p-3">Email</th>
+                                <th className="p-3">IP</th>
+                                <th className="p-3">Reason</th>
+                                <th className="p-3">Endpoint</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {rows.map((ev) => (
+                                <tr
+                                    key={ev.id}
+                                    className="border-b border-line last:border-0"
+                                >
+                                    <td className="p-3 text-xs text-ink-3">
+                                        {timeAgo(ev.createdAt)}
+                                    </td>
+                                    <td className="p-3 font-medium">
+                                        {ev.emailAttempted}
+                                    </td>
+                                    <td className="num p-3 text-ink-2">
+                                        {ev.ipAddress || "—"}
+                                    </td>
+                                    <td className="p-3">
+                                        <Badge tone="warn">{ev.reason}</Badge>
+                                    </td>
+                                    <td className="p-3 text-xs text-ink-3">
+                                        {ev.endpoint}
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            ) : (
+                <EmptyState
+                    title="No failed login events"
+                    text="Failed authentication attempts will appear here."
+                />
+            )}
+            {hasMore && (
+                <div className="flex justify-center">
+                    <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={loadMore}
+                        disabled={loadingMore}
+                    >
+                        {loadingMore ? "Loading…" : "Load more"}
+                    </Button>
+                </div>
+            )}
+        </div>
+    );
+}
