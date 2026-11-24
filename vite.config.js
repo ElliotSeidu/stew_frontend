@@ -21,6 +21,31 @@ function enforceApiUrlPlugin(command, mode) {
   }
 }
 
+function stagingSeoPlugin(command, mode) {
+  let isStaging = false
+  return {
+    name: 'stew-staging-seo',
+    configResolved() {
+      const env = loadEnv(mode, process.cwd(), '')
+      const appEnv = (process.env.VITE_APP_ENV ?? env.VITE_APP_ENV ?? '').trim().toLowerCase()
+      isStaging = appEnv === 'staging'
+    },
+    transformIndexHtml(html) {
+      if (!isStaging) return html
+      return html.replace('</head>', '    <meta name="robots" content="noindex, nofollow" />\n    </head>')
+    },
+    generateBundle() {
+      if (command === 'build' && isStaging) {
+        this.emitFile({
+          type: 'asset',
+          fileName: 'robots.txt',
+          source: 'User-agent: *\nDisallow: /\n',
+        })
+      }
+    },
+  }
+}
+
 export default defineConfig(({ command, mode }) => ({
   build: {
     sourcemap: false,
@@ -34,6 +59,7 @@ export default defineConfig(({ command, mode }) => ({
   },
   plugins: [
     enforceApiUrlPlugin(command, mode),
+    stagingSeoPlugin(command, mode),
     react(),
     tailwindcss(),
     VitePWA({

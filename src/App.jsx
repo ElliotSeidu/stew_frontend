@@ -181,10 +181,23 @@ function RouteTracker() {
     return null;
 }
 
+function StagingBanner() {
+    return (
+        <div
+            role="status"
+            data-testid="staging-banner"
+            className="w-full bg-warn px-3 py-1.5 text-center text-xs font-bold leading-snug text-ink"
+        >
+            TEST ENVIRONMENT. No real money. Do not reuse real passwords or enter real personal data.
+        </div>
+    );
+}
+
 export default function App() {
     const { pathname } = useLocation();
     return (
         <>
+            {import.meta.env.VITE_APP_ENV === "staging" && <StagingBanner />}
             <RouteTracker />
             <ChunkErrorBoundary key={pathname}>
                 <Suspense fallback={<RouteFallback />}>
