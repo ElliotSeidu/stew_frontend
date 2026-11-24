@@ -698,6 +698,12 @@ export function VDashboard() {
                     prev.status !== updated.status ||
                     prev.cancelledAt !== updated.cancelledAt;
                 const paidChanged = prev.paid !== updated.paid || prev.payment?.status !== updated.payment?.status;
+                const nowCancelled = Boolean(updated.cancelledAt || updated.status === "cancelled");
+                const wasCancelled = Boolean(prev.cancelledAt || prev.status === "cancelled");
+                if (nowCancelled && !wasCancelled) {
+                    toast(`Order ${updated.code || updated.id} was cancelled.`);
+                    return null;
+                }
                 if (msgsChanged || stageChanged || paidChanged) {
                     return updated;
                 }
@@ -804,7 +810,13 @@ export function VDashboard() {
                     o.status !== "cancelled" &&
                     o.prepStage === "ready"
             );
-        return withStage;
+        if (filter === "cancelled")
+            return withStage.filter(
+                (o) => Boolean(o.cancelledAt || o.status === "cancelled")
+            );
+        return withStage.filter(
+            (o) => !o.cancelledAt && o.status !== "cancelled"
+        );
     }, [queue, filter]);
 
     const weekTotal = Number(ledgerData?.weekTotal ?? 0) || 0;
@@ -897,6 +909,7 @@ export function VDashboard() {
                     ["active", "In progress"],
                     ["ready", "Ready"],
                     ["all", "All"],
+                    ["cancelled", "Cancelled"],
                 ].map(([id, label]) => (
                     <Button
                         key={id}

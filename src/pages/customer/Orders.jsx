@@ -434,12 +434,16 @@ export function OrderDetail() {
     return () => { alive = false }
   }, [retry, toast])
 
+  const isTerminal = Boolean(
+    o && (finished(o.status) || o.cancelledAt || payStatus(o) === 'refunded')
+  )
   useEffect(() => {
+    if (isTerminal) return
     const t = setInterval(() => {
       if (document.visibilityState !== 'hidden') retry(true)
     }, 6000)
     return () => clearInterval(t)
-  }, [retry])
+  }, [retry, isTerminal])
   // Follow the chef's progress taps, not elapsed time.
   useEffect(() => {
     if (!o) return
