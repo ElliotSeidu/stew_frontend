@@ -102,7 +102,12 @@ function OrderThread({ order, from, onSent }) {
     e.preventDefault()
     if (!text.trim()) return
     setBusy(true)
-    try { await api.sendMessage(order.id, { text, from }); setText(''); onSent?.() }
+    try {
+      const updated = await api.sendMessage(order.id, { text, from })
+      if (updated?.phoneMasked) toast('Phone numbers are hidden in chat for privacy.')
+      setText('')
+      onSent?.()
+    }
     catch (err) { toast(err.message, 'bad') }
     finally { setBusy(false) }
   }

@@ -10,7 +10,6 @@ import {
     MapPin,
     MessageSquare,
     Package,
-    Phone,
     ShoppingBasket,
     Wallet,
     Trash2,
@@ -459,6 +458,9 @@ function OrderThread({ order, from, onSent }) {
         setBusy(true);
         try {
             const updated = await api.sendMessage(order.id, { text, from });
+            if (updated?.phoneMasked) {
+                toast("Phone numbers are hidden in chat for privacy.");
+            }
             setText("");
             onSent?.(updated);
         } catch (err) {
@@ -929,15 +931,6 @@ export function VDashboard() {
                                         </p>
                                         <p className="text-sm text-ink-2">
                                             {o.customer}
-                                            {o.phone && !isCancelled && (
-                                                <a
-                                                    href={`tel:${o.phone}`}
-                                                    className="ml-2 inline-flex items-center gap-1 font-semibold text-brand-strong"
-                                                >
-                                                    <Phone className="h-3 w-3" />
-                                                    {o.phone}
-                                                </a>
-                                            )}
                                         </p>
                                     </div>
                                     <div className="flex flex-wrap items-center gap-1.5">
