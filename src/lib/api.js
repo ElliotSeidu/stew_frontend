@@ -153,6 +153,16 @@ const real = {
   adminUsers: (params) => http('/admin/users/' + qsPage(params)),
   updateAdminUser: (id, p) => http(`/admin/users/${encodeURIComponent(id)}/`, { method: 'PATCH', body: p }),
   auditLogs: (params) => http('/admin/audit/' + qsPage(params)),
+  adminConversations: (params = {}) => {
+    const sp = new URLSearchParams()
+    if (params.q) sp.set('q', params.q)
+    if (params.limit != null) sp.set('limit', String(params.limit))
+    if (params.offset != null) sp.set('offset', String(params.offset))
+    const q = sp.toString()
+    return http('/admin/conversations/' + (q ? `?${q}` : ''))
+  },
+  adminConversationMessages: (orderId, reason) =>
+    http(`/admin/conversations/${encodeURIComponent(orderId)}/messages/?reason=${encodeURIComponent(reason)}`),
   createReview: (p) => post('/reviews/', p),
   applyVendor: (p) => post('/vendor/apply/', p),
   markVendor: () => post('/vendor/activate/'),
@@ -657,6 +667,8 @@ const mock = {
     return list.find((u) => u.id === id)
   },
   async auditLogs() { return read(AUDIT_KEY, []) },
+  async adminConversations() { return { results: [], count: 0, hasMore: false, nextOffset: null } },
+  async adminConversationMessages(orderId, reason) { return { orderId, reason, messages: [] } },
 
   // ---- payout batches: aggregate, do not transfer per order (project.md §16.5) ----
   async payoutBatches() { await wait(150); return read('stew.payoutBatches', []) },

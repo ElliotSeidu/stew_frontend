@@ -116,6 +116,7 @@ function OrderThread({ order, from, onSent }) {
       <div>
         <h2 className="flex items-center gap-2 font-bold"><MessageSquare className="h-4 w-4 text-brand-strong" />Message the kitchen</h2>
         <p className="mt-0.5 text-xs text-ink-3">Chat with {order.vendorName} here to decide where and when to meet for pickup, or ask about pepper and allergies.</p>
+        <p className="mt-1 text-[11px] text-ink-3">Messages in this chat may be reviewed by STEW admins for safety and security.</p>
       </div>
       {messages.length ? (
         <ul ref={listRef} className="max-h-64 space-y-2 overflow-y-auto rounded-xl bg-sunken p-3">

@@ -65,6 +65,7 @@ const AModeration = lazyRoute(loadAdmin, "AModeration");
 const ACompliance = lazyRoute(loadAdmin, "ACompliance");
 const APayouts = lazyRoute(loadAdmin, "APayouts");
 const AAudit = lazyRoute(loadAdmin, "AAudit");
+const AConversations = lazyRoute(loadAdmin, "AConversations");
 const AUsers = lazyRoute(loadAdmin, "AUsers");
 
 function RouteFallback() {
@@ -265,6 +266,7 @@ export default function App() {
                         <Route path="compliance" element={<ACompliance />} />
                         <Route path="payouts" element={<APayouts />} />
                         <Route path="audit" element={<AAudit />} />
+                        <Route path="conversations" element={<AConversations />} />
                         <Route path="users" element={<AUsers />} />
                     </Route>
                 </Route>

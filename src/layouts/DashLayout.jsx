@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom'
 import {
   ChartColumn, LayoutDashboard, LogOut, Settings, ShieldAlert, Store, UtensilsCrossed, Users,
-  ReceiptText, MessageSquareCheck, ShieldCheck, Wallet, FileText,
+  ReceiptText, MessageSquare, MessageSquareCheck, ShieldCheck, Wallet, FileText,
 } from 'lucide-react'
 import { Badge, Button, ConfirmDialog, KitchenLogo, Logo, ThemeToggle } from '../components/ui'
 import { useAuth } from '../context/Providers'
@@ -26,6 +26,7 @@ const LINKS = {
     { to: '/app/admin/compliance', label: 'Compliance', icon: ShieldCheck },
     { to: '/app/admin/payouts', label: 'Payouts', icon: Wallet },
     { to: '/app/admin/audit', label: 'Audit Log', icon: FileText },
+    { to: '/app/admin/conversations', label: 'Conversations', icon: MessageSquare },
     { to: '/app/admin/users', label: 'Users', icon: Users },
   ],
 }

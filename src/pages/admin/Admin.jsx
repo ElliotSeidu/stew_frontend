@@ -1157,3 +1157,181 @@ export function AUsers() {
         </div>
     );
 }
+
+export function AConversations() {
+    const toast = useToast();
+    const [q, setQ] = useState("");
+    const [appliedQ, setAppliedQ] = useState("");
+    const [selected, setSelected] = useState(null);
+    const [reason, setReason] = useState("safety");
+    const [messagesData, setMessagesData] = useState(null);
+    const [loadingMsgs, setLoadingMsgs] = useState(false);
+
+    const convos = useAsync(
+        () => api.adminConversations(appliedQ ? { q: appliedQ } : {}),
+        [appliedQ]
+    );
+    const list = convos.data?.results || [];
+
+    const openConversation = (c) => {
+        setSelected(c);
+        setReason("safety");
+        setMessagesData(null);
+    };
+
+    const loadMessages = async (e) => {
+        e.preventDefault();
+        if (!selected) return;
+        setLoadingMsgs(true);
+        try {
+            const res = await api.adminConversationMessages(
+                selected.orderId,
+                reason
+            );
+            setMessagesData(res);
+        } catch (err) {
+            toast(err.message || "Could not load conversation", "bad");
+        } finally {
+            setLoadingMsgs(false);
+        }
+    };
+
+    return (
+        <div className="space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+                <h1 className="text-2xl font-extrabold">Conversations</h1>
+                <form
+                    onSubmit={(e) => {
+                        e.preventDefault();
+                        setAppliedQ(q.trim());
+                    }}
+                    className="flex gap-2"
+                >
+                    <Input
+                        value={q}
+                        onChange={(e) => setQ(e.target.value)}
+                        placeholder="Search order, customer, kitchen"
+                        aria-label="Search conversations"
+                    />
+                    <Button type="submit" size="sm" variant="secondary">
+                        Search
+                    </Button>
+                </form>
+            </div>
+            {convos.error ? (
+                <ErrorState onRetry={convos.retry} />
+            ) : list.length ? (
+                <div className="overflow-x-auto rounded-2xl border border-line bg-surface">
+                    <table className="w-full text-left text-sm">
+                        <thead className="border-b border-line text-xs text-ink-3">
+                            <tr>
+                                <th className="p-3">Order</th>
+                                <th className="p-3">Customer</th>
+                                <th className="p-3">Kitchen</th>
+                                <th className="p-3">Messages</th>
+                                <th className="p-3">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {list.map((c) => (
+                                <tr
+                                    key={c.orderId}
+                                    className="border-b border-line last:border-0"
+                                >
+                                    <td className="num p-3 font-semibold">
+                                        {c.orderId}
+                                    </td>
+                                    <td className="p-3">{c.customerName}</td>
+                                    <td className="p-3 text-ink-2">
+                                        {c.vendorName}
+                                    </td>
+                                    <td className="num p-3">{c.messageCount}</td>
+                                    <td className="p-3">
+                                        <Button
+                                            size="sm"
+                                            variant="secondary"
+                                            onClick={() => openConversation(c)}
+                                        >
+                                            Review
+                                        </Button>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            ) : (
+                <EmptyState
+                    title="No conversations found"
+                    text="Orders with customer-kitchen messages will appear here."
+                />
+            )}
+            <Modal
+                open={!!selected}
+                onClose={() => setSelected(null)}
+                title={
+                    selected
+                        ? `Conversation ${selected.orderId}`
+                        : "Conversation"
+                }
+            >
+                {!messagesData ? (
+                    <form onSubmit={loadMessages} className="space-y-4">
+                        <p className="text-sm text-ink-2">
+                            Select a review reason. Viewing unmasked order chat
+                            messages is recorded in the audit log.
+                        </p>
+                        <Field label="Reason for viewing">
+                            <Select
+                                value={reason}
+                                onChange={(e) => setReason(e.target.value)}
+                                required
+                            >
+                                <option value="safety">Safety</option>
+                                <option value="fraud">Fraud</option>
+                                <option value="dispute">Dispute</option>
+                                <option value="security">Security</option>
+                                <option value="other">Other</option>
+                            </Select>
+                        </Field>
+                        <div className="flex justify-end gap-2">
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                onClick={() => setSelected(null)}
+                            >
+                                Cancel
+                            </Button>
+                            <Button type="submit" disabled={loadingMsgs}>
+                                {loadingMsgs ? "Loading…" : "View messages"}
+                            </Button>
+                        </div>
+                    </form>
+                ) : (
+                    <div className="space-y-3">
+                        <p className="text-xs text-ink-3">
+                            {messagesData.customerName} ↔{" "}
+                            {messagesData.vendorName} · Reason:{" "}
+                            {messagesData.reason}
+                        </p>
+                        <ul className="max-h-72 space-y-2 overflow-y-auto rounded-xl bg-sunken p-3">
+                            {(messagesData.messages || []).map((m, idx) => (
+                                <li
+                                    key={idx}
+                                    className="rounded-xl bg-surface px-3 py-2 text-sm text-ink"
+                                >
+                                    <span className="block text-[11px] font-semibold text-ink-3">
+                                        {m.from} · {timeAgo(m.at)}
+                                    </span>
+                                    <span className="block whitespace-pre-wrap">
+                                        {m.text}
+                                    </span>
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
+                )}
+            </Modal>
+        </div>
+    );
+}

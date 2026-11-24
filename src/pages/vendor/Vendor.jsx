@@ -482,6 +482,9 @@ function OrderThread({ order, from, onSent }) {
                     Chat here to agree on a safe, public place and time to meet
                     for pickup.
                 </p>
+                <p className="text-[11px] text-ink-3">
+                    Messages in this chat may be reviewed by STEW admins for safety and security.
+                </p>
             </div>
             {messages.length ? (
                 <ul
