@@ -545,6 +545,24 @@ export function OrderDetail() {
 
       <CancelBox order={o} onDone={retry} />
 
+      {(ps === 'refund_pending' || ps === 'refunded') && (
+        <Card className={ps === 'refunded' ? 'border-ok/40 bg-ok-soft' : o.payment?.refund?.needsAttention ? 'border-bad/40 bg-bad-soft' : 'border-warn/40 bg-warn-soft'}>
+          <p className="text-sm font-bold">
+            {ps === 'refunded'
+              ? 'Refund processed'
+              : o.payment?.refund?.needsAttention
+                ? 'Refund needs attention'
+                : 'Refund pending'}
+          </p>
+          <p className="mt-1 text-xs text-ink-2">
+            {ps === 'refunded'
+              ? `Your full refund of ${money(o.total)} (including service fee) has been processed.`
+              : `Your full refund of ${money(o.total)} (including service fee) is being processed via Paystack.`}{' '}
+            Refunds may take up to 10 business days to appear on your MoMo or card.
+          </p>
+        </Card>
+      )}
+
       {ps === 'paid' && !cancelled && <ConfirmCollection order={o} onDone={retry} />}
       {ps === 'released' && !cancelled && (
         <Card className="space-y-3 border-ok/40 bg-ok-soft">

@@ -26,6 +26,7 @@ export function AOverview() {
     const orders = useAsync(() => api.orders(), []);
     const vendors = useAsync(() => api.adminVendors(), []);
     const cases = useAsync(() => api.cases(), []);
+    const refundsAttention = useAsync(() => api.adminRefundsAttention(), []);
 
     const held = ledger.data?.held ?? 0;
     const [todayStart] = useState(() => {
@@ -118,6 +119,22 @@ export function AOverview() {
                         Priority: {highPriorityCount} food safety case
                         {highPriorityCount === 1 ? "" : "s"} need review
                     </p>
+                </Card>
+            )}
+
+            {(refundsAttention.data?.results || []).length > 0 && (
+                <Card className="space-y-2 border-warn/40 bg-warn-soft">
+                    <p className="font-bold text-warn">
+                        Refunds needing attention ({refundsAttention.data.results.length})
+                    </p>
+                    <ul className="space-y-1 text-xs text-ink-2">
+                        {refundsAttention.data.results.map((r) => (
+                            <li key={r.orderId} className="flex flex-wrap justify-between gap-2">
+                                <span className="num font-semibold text-ink">{r.orderId}</span>
+                                <span>{r.customerName} · {money(r.total)} · {r.refundStatus}{r.lastError ? ` (${r.lastError})` : ""}</span>
+                            </li>
+                        ))}
+                    </ul>
                 </Card>
             )}
         </div>
@@ -517,6 +534,15 @@ export function AOrders() {
                                             <span className="rounded bg-brand-soft px-2 py-0.5 font-mono font-bold text-brand-strong">
                                                 Code: {o.handoffCode}
                                             </span>
+                                        )}
+                                        {(o.payment?.status === "refund_pending" || o.payment?.status === "refunded") && (
+                                            <Badge tone={o.payment.status === "refunded" ? "ok" : o.payment?.refund?.needsAttention ? "bad" : "warn"}>
+                                                {o.payment.status === "refunded"
+                                                    ? "Refunded"
+                                                    : o.payment?.refund?.needsAttention
+                                                      ? "Refund attention"
+                                                      : "Refund pending"}
+                                            </Badge>
                                         )}
                                     </div>
                                 </div>

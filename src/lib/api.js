@@ -175,6 +175,7 @@ const real = {
     const q = sp.toString()
     return http('/admin/security/failed-logins/' + (q ? `?${q}` : ''))
   },
+  adminRefundsAttention: () => http('/admin/refunds/attention/'),
   createReview: (p) => post('/reviews/', p),
   applyVendor: (p) => post('/vendor/apply/', p),
   markVendor: () => post('/vendor/activate/'),
@@ -693,6 +694,7 @@ const mock = {
       nextOffset: null,
     }
   },
+  async adminRefundsAttention() { return { results: [], count: 0 } },
 
   // ---- payout batches: aggregate, do not transfer per order (project.md §16.5) ----
   async payoutBatches() { await wait(150); return read('stew.payoutBatches', []) },
