@@ -84,9 +84,18 @@ export function Checkout() {
   const toast = useToast()
   const nav = useNavigate()
   const [safetyOk, setSafetyOk] = useState(false)
+  const [reviewing, setReviewing] = useState(false)
+  const [reviewConfirmed, setReviewConfirmed] = useState(false)
+  const [confirmedTotal, setConfirmedTotal] = useState(null)
+  const [policy, setPolicy] = useState(null)
   const [pendingOrder, setPendingOrder] = useState(null)
   const [payStage, setPayStage] = useState(null)
   const days = useMemo(() => cookDays(), [])
+  useEffect(() => {
+    let alive = true
+    api.orderPolicy().then((p) => { if (alive && p) setPolicy(p) }).catch(() => {})
+    return () => { alive = false }
+  }, [])
   const { register, handleSubmit, setError, formState: { errors, isSubmitting } } = useForm({
     mode: 'onTouched',
     defaultValues: {
@@ -102,9 +111,15 @@ export function Checkout() {
   if (!cart.lines.length && !pendingOrder) return <EmptyState icon={ShoppingBag} title="Nothing to check out" action={<Button to="/app/discover">Browse food</Button>} />
 
   const fee = feeFor(subtotal)
-  const total = pendingOrder ? pendingOrder.total : subtotal + fee
+  const total = pendingOrder ? pendingOrder.total : (confirmedTotal ?? (subtotal + fee))
 
   const onSubmit = async (d) => {
+    if (!reviewing) {
+      setConfirmedTotal(subtotal + fee)
+      setReviewConfirmed(false)
+      setReviewing(true)
+      return
+    }
     let createdOrder = pendingOrder
     try {
       if (!createdOrder) {
@@ -121,6 +136,7 @@ export function Checkout() {
           pickupSlot: d.pickupSlot,
           orderNote: d.note,
           subtotal,
+          expectedTotal: total,
         })
         setPendingOrder(createdOrder)
         clear()
@@ -134,7 +150,13 @@ export function Checkout() {
       nav(`/app/orders/${createdOrder.id}?paid=1`, { replace: true })
     } catch (e) {
       setPayStage(null)
-      if (e.code === 'closed') {
+      if (e.status === 409 || e.code === 'price_changed') {
+        setReviewConfirmed(false)
+        if (typeof e.data?.serverTotal === 'number') {
+          setConfirmedTotal(e.data.serverTotal)
+        }
+        setError('root', { message: e.message || 'Order details or prices changed. Please review and re-confirm.' })
+      } else if (e.code === 'closed') {
         if (createdOrder?.id) {
           toast('Order saved — complete payment to send it to the kitchen.')
           nav(`/app/orders/${createdOrder.id}`, { replace: true })
@@ -204,12 +226,32 @@ export function Checkout() {
             STEW holds that money in escrow and only releases <Price v={subtotal} className="text-ink" /> to your chef once it is confirmed that you received the food.
             Nothing is paid in cash at the meetup, and you should never send Mobile Money to a chef directly.
           </p>
-          <label className="flex items-start gap-2 text-sm text-ink-2">
-            <input type="checkbox" className="mt-1 h-4 w-4 accent-brand" checked={safetyOk} onChange={(e) => setSafetyOk(e.target.checked)} />
+          <label className="flex min-h-[44px] cursor-pointer items-center gap-3 text-sm text-ink-2">
+            <input type="checkbox" className="h-5 w-5 shrink-0 accent-brand" checked={safetyOk} onChange={(e) => setSafetyOk(e.target.checked)} />
             <span>I have read the meeting safety points above and I will meet in a public, well-lit place.</span>
           </label>
           {!safetyOk && <p className="text-xs text-ink-3">Please confirm the safety points to pay and place your order.</p>}
         </Card>
+
+        {reviewing && (
+          <Card className="space-y-3 border-brand/40 bg-brand-soft/30">
+            <h2 className="font-bold">Review &amp; confirm</h2>
+            <p className="text-sm text-ink-2">
+              {policy?.customerCancelUntilPrepStarts !== false
+                ? `You can cancel a paid order for a full refund (including the service fee) until the kitchen starts preparing it (up to ${policy?.customerPaidCancelsPerDay ?? 5} paid cancellations per day).`
+                : `You can cancel a paid order within ${policy?.customerCancelWindowSeconds ?? 120} seconds of placing it, as long as the kitchen hasn't started.`}
+            </p>
+            <label className="flex min-h-[44px] cursor-pointer items-center gap-3 text-sm text-ink">
+              <input
+                type="checkbox"
+                className="h-5 w-5 shrink-0 accent-brand"
+                checked={reviewConfirmed}
+                onChange={(e) => setReviewConfirmed(e.target.checked)}
+              />
+              <span>I have reviewed my order total ({money(total)}) and cancellation policy.</span>
+            </label>
+          </Card>
+        )}
       </div>
 
       <div className="space-y-4 md:pt-12">
@@ -230,15 +272,28 @@ export function Checkout() {
             </div>
           </div>
         )}
-        <Button type="submit" size="lg" className="w-full" loading={isSubmitting} disabled={!safetyOk || isSubmitting}>
-          {payStage === 'verifying'
-            ? 'Confirming Paystack payment…'
-            : payStage === 'awaiting-approval'
-              ? 'Approve Paystack prompt…'
-              : payStage === 'contacting-paystack'
-                ? 'Starting Paystack…'
-                : `Pay now with Paystack · ${money(total)}`}
-        </Button>
+        {!reviewing ? (
+          <Button type="submit" size="lg" className="w-full" disabled={!safetyOk || isSubmitting}>
+            Review &amp; confirm · {money(total)}
+          </Button>
+        ) : (
+          <div className="space-y-2">
+            <Button type="submit" size="lg" className="w-full" loading={isSubmitting} disabled={!safetyOk || !reviewConfirmed || isSubmitting}>
+              {payStage === 'verifying'
+                ? 'Confirming Paystack payment…'
+                : payStage === 'awaiting-approval'
+                  ? 'Approve Paystack prompt…'
+                  : payStage === 'contacting-paystack'
+                    ? 'Starting Paystack…'
+                    : `Pay now with Paystack · ${money(total)}`}
+            </Button>
+            {!pendingOrder && (
+              <Button type="button" variant="outline" size="md" className="w-full" onClick={() => setReviewing(false)}>
+                Back to edit details
+              </Button>
+            )}
+          </div>
+        )}
         <Link to="/app/cart" className="block text-center text-sm font-semibold text-ink-2 underline">Back to tray</Link>
       </div>
     </form>

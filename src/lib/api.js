@@ -124,6 +124,7 @@ const real = {
   sendMessage: (id, p) => post(`/orders/${id}/messages/`, p),
 
   // --- handoff: the fulfilment completion event (project.md §29.3, §30) ------
+  orderPolicy: () => http('/orders/policy/'),
   completeByCode: (id, code) => post(`/orders/${id}/complete/`, { code }),
 
   // --- reviews: done by the back end, never by the browser -------------------
@@ -594,6 +595,9 @@ const mock = {
   },
   async subscribePush(p) { await wait(200); write('stew.pushSub', p); return { ok: true } },
   async unsubscribePush() { await wait(200); localStorage.removeItem('stew.pushSub'); return { ok: true } },
+  async orderPolicy() {
+    return { customerCancelUntilPrepStarts: true, customerCancelWindowSeconds: 120, customerPaidCancelsPerDay: 5 }
+  },
 
   // ---- reviews: only a completed order may be reviewed, and moderation gates display ----
   // project.md §21.4 (verified completed orders only) and ADM-005 (moderator hides or keeps).

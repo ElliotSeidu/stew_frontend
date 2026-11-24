@@ -322,27 +322,40 @@ function ConfirmCollection({ order, onDone }) {
 
 function CancelBox({ order, onDone }) {
   const toast = useToast()
+  const [policy, setPolicy] = useState(null)
   const [left, setLeft] = useState(() => Math.max(0, CANCEL_WINDOW - Math.floor((Date.now() - order.createdAt) / 1000)))
   const [confirm, setConfirm] = useState(false)
   const [busy, setBusy] = useState(false)
   useEffect(() => {
-    if (left <= 0) return
+    let alive = true
+    api.orderPolicy().then((p) => { if (alive && p) setPolicy(p) }).catch(() => {})
+    return () => { alive = false }
+  }, [])
+  const untilPrep = policy?.customerCancelUntilPrepStarts ?? true
+  useEffect(() => {
+    if (untilPrep || left <= 0) return
     const t = setTimeout(() => setLeft((l) => l - 1), 1000)
     return () => clearTimeout(t)
-  }, [left])
+  }, [untilPrep, left])
   if (payStatus(order) === 'pending' && !order.cancelledAt && order.status !== 'cancelled') return null
-  if (orderStage(order) !== 'accepted' || left <= 0) return null
+  if (order.cancelledAt || order.status === 'cancelled') return null
+  if (orderStage(order) !== 'accepted') return null
+  if (!untilPrep && left <= 0) return null
   const cancel = async () => {
     setBusy(true)
     try { await api.cancelOrder(order.id); toast('Order cancelled'); setConfirm(false); onDone() } catch (e) { toast(e.message, 'bad'); setConfirm(false); onDone() } finally { setBusy(false) }
   }
   return (
     <Card className="flex items-center justify-between gap-3 border-warn/40 bg-warn-soft">
-      <p className="text-sm text-warn">Changed your mind? You can cancel for <span className="num font-bold">{Math.floor(left / 60)}:{String(left % 60).padStart(2, '0')}</span>, as long as the kitchen hasn't started.</p>
+      {untilPrep ? (
+        <p className="text-sm text-warn">Changed your mind? You can cancel for a full refund until the kitchen starts preparing your order.</p>
+      ) : (
+        <p className="text-sm text-warn">Changed your mind? You can cancel for <span className="num font-bold">{Math.floor(left / 60)}:{String(left % 60).padStart(2, '0')}</span>, as long as the kitchen hasn't started.</p>
+      )}
       <Button size="sm" variant="outline" onClick={() => setConfirm(true)}>Cancel order</Button>
       <Modal open={confirm} onClose={() => setConfirm(false)} title="Cancel this order?"
         footer={<><Button variant="outline" onClick={() => setConfirm(false)}>Keep order</Button><Button variant="danger" loading={busy} onClick={cancel}>Yes, cancel</Button></>}>
-        <p className="text-sm text-ink-2">The kitchen will be told right away. If you already paid, the refund goes back to the MoMo number you paid with.</p>
+        <p className="text-sm text-ink-2">The kitchen will be told right away. If you already paid, a full refund (including service fee) goes back to the MoMo or card you paid with.</p>
       </Modal>
     </Card>
   )
